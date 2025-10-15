@@ -17,81 +17,140 @@ internal sealed class McpServer
         _workbookService = workbookService;
         _tools = new Dictionary<string, Func<JsonNode?, CancellationToken, Task<McpToolCallResult>>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["excel.list_structure"] = HandleListStructureAsync,
-            ["excel.search"] = HandleSearchAsync,
-            ["excel.preview_table"] = HandlePreviewAsync
+            { "excel-list-structure", HandleListStructureAsync },
+            { "excel-search", HandleSearchAsync },
+            { "excel-preview-table", HandlePreviewAsync }
         };
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
+        Log("MCP server starting");
         await using var transport = new JsonRpcTransport(Console.OpenStandardInput(), Console.OpenStandardOutput());
+        Log("Transport ready, waiting for messages");
         while (!cancellationToken.IsCancellationRequested)
         {
             JsonRpcMessage? message;
             try
             {
+                Log("Awaiting incoming message");
                 message = await transport.ReadAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (EndOfStreamException)
             {
+                Log("End of stream received, shutting down");
                 break;
             }
 
             if (message is null)
             {
+                Log("No message received, shutting down");
                 break;
             }
 
             if (message.Method is null)
             {
+                Log("Message without method ignored");
                 continue;
             }
 
+            var isNotification = message.Id is null;
+
             try
             {
+                Log($"Dispatching {message.Method}");
                 switch (message.Method)
                 {
                     case "initialize":
+                        Log("Handling initialize");
                         await HandleInitializeAsync(transport, message, cancellationToken).ConfigureAwait(false);
+                        Log("Sent initialize result");
+                        break;
+                    case "initialized":
+                        Log("Client reported initialized");
+                        // Client completed initialization; no response required.
                         break;
                     case "shutdown":
                         await transport.WriteResultAsync(message.Id, new { }, cancellationToken).ConfigureAwait(false);
+                        Log("Sent shutdown ack");
                         break;
                     case "tools/list":
+                        Log("Received tools/list");
                         await HandleToolsListAsync(transport, message, cancellationToken).ConfigureAwait(false);
+                        Log("Sent tools/list result");
                         break;
                     case "tools/call":
                         await HandleToolsCallAsync(transport, message, cancellationToken).ConfigureAwait(false);
+                        Log("Sent tools/call result");
                         break;
                     case "resources/list":
                         await HandleResourcesListAsync(transport, message, cancellationToken).ConfigureAwait(false);
+                        Log("Sent resources/list result");
                         break;
                     case "resources/read":
                         await HandleResourcesReadAsync(transport, message, cancellationToken).ConfigureAwait(false);
+                        Log("Sent resources/read result");
                         break;
                     case "ping":
                         await transport.WriteResultAsync(message.Id, new { }, cancellationToken).ConfigureAwait(false);
+                        Log("Sent ping ack");
                         break;
+                    case "exit":
+                        Log("Received exit signal");
+                        return;
                     default:
-                        await transport.WriteErrorAsync(message.Id, new McpErrorResponse(-32601, $"Unknown method '{message.Method}'."), cancellationToken).ConfigureAwait(false);
+                        if (!isNotification)
+                        {
+                            await transport.WriteErrorAsync(message.Id, new McpErrorResponse(-32601, $"Unknown method '{message.Method}'."), cancellationToken).ConfigureAwait(false);
+                            Log($"Reported unknown method {message.Method}");
+                        }
                         break;
                 }
             }
             catch (Exception ex)
             {
-                await transport.WriteErrorAsync(message.Id, new McpErrorResponse(-32603, ex.Message), cancellationToken).ConfigureAwait(false);
+                if (!isNotification)
+                {
+                    await transport.WriteErrorAsync(message.Id, new McpErrorResponse(-32603, ex.Message), cancellationToken).ConfigureAwait(false);
+                    Log($"Error handling {message.Method}: {ex.Message}");
+                }
             }
         }
+        Log("Server loop ended");
     }
 
     private async Task HandleInitializeAsync(JsonRpcTransport transport, JsonRpcMessage message, CancellationToken cancellationToken)
     {
         var version = typeof(McpServer).Assembly.GetName().Version?.ToString() ?? "0.1.0";
+
+        var protocolVersion = "2025-06-18";
+        if (message.Params is JsonElement paramsElement && paramsElement.ValueKind == JsonValueKind.Object &&
+            paramsElement.TryGetProperty("protocolVersion", out var protocolElement) &&
+            protocolElement.ValueKind == JsonValueKind.String)
+        {
+            var requested = protocolElement.GetString();
+            if (!string.IsNullOrWhiteSpace(requested))
+            {
+                protocolVersion = requested!;
+            }
+        }
+
+        var capabilities = new JsonObject
+        {
+            ["tools"] = new JsonObject
+            {
+                ["listChanged"] = false
+            },
+            ["resources"] = new JsonObject
+            {
+                ["listChanged"] = false
+            }
+        };
+
         var result = new McpInitializeResult(
-            "1.0",
+            protocolVersion,
             new McpServerInfo("excel-local-mcp", version),
-            new McpCapabilities(new McpToolCapability(ListChanged: false), new McpResourceCapability(ListChanged: false))
+            capabilities
         );
 
         await transport.WriteResultAsync(message.Id, result, cancellationToken).ConfigureAwait(false);
@@ -189,8 +248,8 @@ internal sealed class McpServer
             }
         }
 
-        var content = new McpTextContent(summary.ToString().TrimEnd());
-        return new McpToolCallResult(new McpContentItem[] { content });
+        var content = new McpToolContent("text", Text: summary.ToString().TrimEnd());
+        return new McpToolCallResult(new[] { content });
     }
 
     private async Task<McpToolCallResult> HandleSearchAsync(JsonNode? arguments, CancellationToken cancellationToken)
@@ -202,9 +261,9 @@ internal sealed class McpServer
         var result = await _workbookService.SearchAsync(args, cancellationToken).ConfigureAwait(false);
         if (result.Rows.Count == 0)
         {
-            return new McpToolCallResult(new McpContentItem[]
+            return new McpToolCallResult(new[]
             {
-                new McpTextContent("No matching rows found.")
+                new McpToolContent("text", Text: "No matching rows found.")
             });
         }
 
@@ -235,23 +294,23 @@ internal sealed class McpServer
             }).ToArray())
         };
 
-        return new McpToolCallResult(new McpContentItem[] { new McpJsonContent(json) });
+        return new McpToolCallResult(new[] { new McpToolContent("json", Json: json) });
     }
 
     private async Task<McpToolCallResult> HandlePreviewAsync(JsonNode? arguments, CancellationToken cancellationToken)
     {
         if (arguments is null)
         {
-            return new McpToolCallResult(new McpContentItem[] { new McpTextContent("Worksheet and table arguments are required.") }, true);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "Worksheet and table arguments are required.") }, true);
         }
 
-    var worksheetName = arguments["worksheet"]?.GetValue<string?>();
-    var tableName = arguments["table"]?.GetValue<string?>();
-    var rowCount = arguments["rows"]?.GetValue<int?>() ?? 10;
+        var worksheetName = arguments["worksheet"]?.GetValue<string?>();
+        var tableName = arguments["table"]?.GetValue<string?>();
+        var rowCount = arguments["rows"]?.GetValue<int?>() ?? 10;
 
         if (string.IsNullOrWhiteSpace(worksheetName))
         {
-            return new McpToolCallResult(new McpContentItem[] { new McpTextContent("The 'worksheet' argument is required.") }, true);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'worksheet' argument is required.") }, true);
         }
 
         var uri = tableName is null
@@ -261,14 +320,14 @@ internal sealed class McpServer
         try
         {
             var content = await _workbookService.ReadResourceAsync(uri, cancellationToken, Math.Max(rowCount, 1)).ConfigureAwait(false);
-            return new McpToolCallResult(new McpContentItem[]
+            return new McpToolCallResult(new[]
             {
-                new McpTextContent(content.Text ?? string.Empty)
+                new McpToolContent("text", Text: content.Text ?? string.Empty)
             });
         }
         catch (Exception ex)
         {
-            return new McpToolCallResult(new McpContentItem[] { new McpTextContent(ex.Message) }, true);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: ex.Message) }, true);
         }
     }
 
@@ -276,43 +335,60 @@ internal sealed class McpServer
     {
         return toolName switch
         {
-            "excel.list_structure" => "Summarize worksheets, tables, and columns available in the workbook.",
-            "excel.search" => "Search the workbook for rows containing a text query across worksheets or tables.",
-            "excel.preview_table" => "Return a CSV preview of a worksheet or table.",
+            "excel-list-structure" => "Summarize worksheets, tables, and columns available in the workbook.",
+            "excel-search" => "Search the workbook for rows containing a text query across worksheets or tables.",
+            "excel-preview-table" => "Return a CSV preview of a worksheet or table.",
             _ => "Excel tool"
         };
-    }
+        }
 
     private static JsonNode BuildInputSchema(string toolName)
     {
         return toolName switch
         {
-            "excel.list_structure" => JsonNode.Parse("{ \"type\": \"object\", \"properties\": {} }")!,
-            "excel.search" => JsonNode.Parse("""
-            {
-              "type": "object",
-              "properties": {
-                "query": {"type": "string", "description": "Text to match within cell values."},
-                "worksheet": {"type": "string", "description": "Optional worksheet name filter."},
-                "table": {"type": "string", "description": "Optional Excel table name filter."},
-                "limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of matching rows."},
-                "caseSensitive": {"type": "boolean", "description": "Whether to match using case-sensitive comparison."}
-              },
-              "required": ["query"]
-            }
-            """)!,
-            "excel.preview_table" => JsonNode.Parse("""
-            {
-              "type": "object",
-              "properties": {
-                "worksheet": {"type": "string", "description": "Worksheet to preview."},
-                "table": {"type": "string", "description": "Optional table within the worksheet."},
-                "rows": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of rows to include."}
-              },
-              "required": ["worksheet"]
-            }
-            """)!,
-            _ => JsonNode.Parse("{ }")!
-        };
+                        "excel-list-structure" => JsonNode.Parse("{ \"type\": \"object\", \"properties\": {} }")!,
+                        "excel-search" => JsonNode.Parse("""
+                        {
+                            "type": "object",
+                            "properties": {
+                                "query": {"type": "string", "description": "Text to match within cell values."},
+                                "worksheet": {"type": "string", "description": "Optional worksheet name filter."},
+                                "table": {"type": "string", "description": "Optional Excel table name filter."},
+                                "limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of matching rows."},
+                                "caseSensitive": {"type": "boolean", "description": "Whether to match using case-sensitive comparison."}
+                            },
+                            "required": ["query"]
+                        }
+                        """)!,
+                        "excel-preview-table" => JsonNode.Parse("""
+                        {
+                            "type": "object",
+                            "properties": {
+                                "worksheet": {"type": "string", "description": "Worksheet to preview."},
+                                "table": {"type": "string", "description": "Optional table within the worksheet."},
+                                "rows": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of rows to include."}
+                            },
+                            "required": ["worksheet"]
+                        }
+                        """)!,
+                        _ => JsonNode.Parse("{ }")!
+                };
+        }
+
+    private static void Log(string message)
+    {
+        if (string.IsNullOrEmpty(message))
+        {
+            return;
+        }
+
+        try
+        {
+            Console.Error.WriteLine($"[{DateTimeOffset.UtcNow:O}] {message}");
+        }
+        catch
+        {
+            // ignore logging failures
+        }
     }
 }

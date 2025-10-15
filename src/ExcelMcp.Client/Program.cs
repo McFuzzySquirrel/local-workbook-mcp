@@ -57,17 +57,16 @@ return 0;
 
 static async Task HandleListAsync(McpProcessClient client, CancellationToken cancellationToken)
 {
-	var result = await client.CallToolAsync("excel.list_structure", new JsonObject(), cancellationToken);
+	var result = await client.CallToolAsync("excel-list-structure", new JsonObject(), cancellationToken);
 	foreach (var content in result.Content)
 	{
-		switch (content)
+		if (string.Equals(content.Type, "text", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(content.Text))
 		{
-			case McpTextContent text:
-				Console.WriteLine(text.Text);
-				break;
-			case McpJsonContent json:
-				Console.WriteLine(json.Json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-				break;
+			Console.WriteLine(content.Text);
+		}
+		else if (string.Equals(content.Type, "json", StringComparison.OrdinalIgnoreCase) && content.Json is not null)
+		{
+			Console.WriteLine(content.Json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 		}
 	}
 }
@@ -106,17 +105,16 @@ static async Task HandleSearchAsync(McpProcessClient client, Queue<string> argsQ
 		payload["caseSensitive"] = true;
 	}
 
-	var result = await client.CallToolAsync("excel.search", payload, cancellationToken);
+	var result = await client.CallToolAsync("excel-search", payload, cancellationToken);
 	foreach (var content in result.Content)
 	{
-		switch (content)
+		if (string.Equals(content.Type, "json", StringComparison.OrdinalIgnoreCase) && content.Json is not null)
 		{
-			case McpJsonContent json:
-				Console.WriteLine(json.Json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-				break;
-			case McpTextContent text:
-				Console.WriteLine(text.Text);
-				break;
+			Console.WriteLine(content.Json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+		}
+		else if (string.Equals(content.Type, "text", StringComparison.OrdinalIgnoreCase) && content.Text is not null)
+		{
+			Console.WriteLine(content.Text);
 		}
 	}
 }
@@ -145,10 +143,13 @@ static async Task HandlePreviewAsync(McpProcessClient client, Queue<string> args
 		payload["rows"] = rows;
 	}
 
-	var result = await client.CallToolAsync("excel.preview_table", payload, cancellationToken);
-	foreach (var content in result.Content.OfType<McpTextContent>())
+	var result = await client.CallToolAsync("excel-preview-table", payload, cancellationToken);
+	foreach (var content in result.Content)
 	{
-		Console.WriteLine(content.Text);
+		if (string.Equals(content.Type, "text", StringComparison.OrdinalIgnoreCase) && content.Text is not null)
+		{
+			Console.WriteLine(content.Text);
+		}
 	}
 }
 

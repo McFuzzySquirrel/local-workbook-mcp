@@ -4,13 +4,9 @@ namespace ExcelMcp.Client.Mcp;
 
 internal sealed record McpToolDefinition(string Name, string Description, JsonNode InputSchema);
 
-internal abstract record McpContentItem(string Type);
+internal sealed record McpToolContent(string Type, string? Text, JsonNode? Json);
 
-internal sealed record McpTextContent(string Text) : McpContentItem("text");
-
-internal sealed record McpJsonContent(JsonNode Json) : McpContentItem("json");
-
-internal sealed record McpToolCallResult(IReadOnlyList<McpContentItem> Content, bool IsError);
+internal sealed record McpToolCallResult(IReadOnlyList<McpToolContent> Content, bool IsError);
 
 internal sealed record McpResource(Uri Uri, string Name, string? Description, string? MimeType);
 

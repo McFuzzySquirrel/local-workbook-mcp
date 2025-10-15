@@ -5,16 +5,10 @@ namespace ExcelMcp.Server.Mcp;
 internal sealed record McpInitializeResult(
     string ProtocolVersion,
     McpServerInfo ServerInfo,
-    McpCapabilities Capabilities
+    JsonObject Capabilities
 );
 
 internal sealed record McpServerInfo(string Name, string Version);
-
-internal sealed record McpCapabilities(McpToolCapability Tools, McpResourceCapability Resources);
-
-internal sealed record McpToolCapability(bool ListChanged);
-
-internal sealed record McpResourceCapability(bool ListChanged, bool Subscribe = false);
 
 internal sealed record McpToolsListResult(IReadOnlyList<McpToolDefinition> Tools, string? NextCursor);
 
@@ -22,13 +16,9 @@ internal sealed record McpToolDefinition(string Name, string Description, JsonNo
 
 internal sealed record McpToolCallParams(string Name, JsonNode? Arguments);
 
-internal sealed record McpToolCallResult(IReadOnlyList<McpContentItem> Content, bool IsError = false);
+internal sealed record McpToolCallResult(IReadOnlyList<McpToolContent> Content, bool IsError = false);
 
-internal abstract record McpContentItem(string Type);
-
-internal sealed record McpTextContent(string Text) : McpContentItem("text");
-
-internal sealed record McpJsonContent(JsonNode Json) : McpContentItem("json");
+internal sealed record McpToolContent(string Type, string? Text = null, JsonNode? Json = null);
 
 internal sealed record McpResourcesListResult(IReadOnlyList<McpResource> Resources, string? NextCursor);
 

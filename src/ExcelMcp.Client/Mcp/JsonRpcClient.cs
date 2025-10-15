@@ -57,10 +57,10 @@ internal sealed class JsonRpcClient : IAsyncDisposable
         }
 
         await payload.FlushAsync(cancellationToken).ConfigureAwait(false);
-        var header = _encoding.GetBytes($"Content-Length: {payload.Length}\r\nContent-Type: application/json\r\n\r\n");
-        await _output.WriteAsync(header, cancellationToken).ConfigureAwait(false);
         payload.Position = 0;
-        await payload.CopyToAsync(_output, cancellationToken).ConfigureAwait(false);
+        var body = payload.ToArray();
+        await _output.WriteAsync(body, cancellationToken).ConfigureAwait(false);
+        await _output.WriteAsync(_encoding.GetBytes("\n"), cancellationToken).ConfigureAwait(false);
         await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -93,63 +93,68 @@ internal sealed class JsonRpcClient : IAsyncDisposable
 
     private async Task<JsonDocument?> ReadMessageAsync(CancellationToken cancellationToken)
     {
-        var headers = await ReadHeadersAsync(cancellationToken).ConfigureAwait(false);
-        if (headers is null)
-        {
-            return null;
-        }
-
-        if (!headers.TryGetValue("Content-Length", out var lengthValue) || !int.TryParse(lengthValue, out var length))
-        {
-            throw new InvalidOperationException("Missing Content-Length header.");
-        }
-
-        var buffer = new byte[length];
-        var read = 0;
-        while (read < length)
-        {
-            var bytesRead = await _input.ReadAsync(buffer.AsMemory(read, length - read), cancellationToken).ConfigureAwait(false);
-            if (bytesRead == 0)
-            {
-                throw new EndOfStreamException("Unexpected end of stream while reading JSON-RPC response.");
-            }
-
-            read += bytesRead;
-        }
-
-        return JsonDocument.Parse(buffer);
-    }
-
-    private async Task<Dictionary<string, string>?> ReadHeadersAsync(CancellationToken cancellationToken)
-    {
-        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         while (true)
         {
-            var line = await ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (line is null)
+            var firstLine = await ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            if (firstLine is null)
             {
-                if (headers.Count == 0)
-                {
-                    return null;
-                }
-
-                throw new EndOfStreamException("Unexpected end of stream while reading headers.");
+                return null;
             }
 
-            if (line.Length == 0)
-            {
-                return headers;
-            }
-
-            var separatorIndex = line.IndexOf(':');
-            if (separatorIndex <= 0)
+            if (firstLine.Length == 0)
             {
                 continue;
             }
 
-            var name = line[..separatorIndex].Trim();
-            var value = line[(separatorIndex + 1)..].Trim();
-            headers[name] = value;
+            var trimmed = firstLine.TrimStart();
+            if (trimmed.StartsWith('{') || trimmed.StartsWith('['))
+            {
+                return JsonDocument.Parse(trimmed);
+            }
+
+            var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ProcessHeaderLine(firstLine, headers);
+
+            while (true)
+            {
+                var line = await ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                if (line is null)
+                {
+                    if (headers.Count == 0)
+                    {
+                        return null;
+                    }
+
+                    throw new EndOfStreamException("Unexpected end of stream while reading headers.");
+                }
+
+                if (line.Length == 0)
+                {
+                    break;
+                }
+
+                ProcessHeaderLine(line, headers);
+            }
+
+            if (!headers.TryGetValue("Content-Length", out var lengthValue) || !int.TryParse(lengthValue, out var length))
+            {
+                throw new InvalidOperationException("Missing Content-Length header.");
+            }
+
+            var buffer = new byte[length];
+            var read = 0;
+            while (read < length)
+            {
+                var bytesRead = await _input.ReadAsync(buffer.AsMemory(read, length - read), cancellationToken).ConfigureAwait(false);
+                if (bytesRead == 0)
+                {
+                    throw new EndOfStreamException("Unexpected end of stream while reading JSON-RPC response.");
+                }
+
+                read += bytesRead;
+            }
+
+            return JsonDocument.Parse(buffer);
         }
     }
 
@@ -194,6 +199,19 @@ internal sealed class JsonRpcClient : IAsyncDisposable
         }
 
         return Encoding.ASCII.GetString(buffer.ToArray());
+    }
+
+    private static void ProcessHeaderLine(string line, Dictionary<string, string> headers)
+    {
+        var separatorIndex = line.IndexOf(':');
+        if (separatorIndex <= 0)
+        {
+            return;
+        }
+
+        var name = line[..separatorIndex].Trim();
+        var value = line[(separatorIndex + 1)..].Trim();
+        headers[name] = value;
     }
 
     public ValueTask DisposeAsync()
