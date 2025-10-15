@@ -2,6 +2,26 @@
 
 Local Model Context Protocol (MCP) server and sample client for working with on-disk Excel workbooks. The server exposes worksheet metadata, table previews, and search capabilities via MCP tools and resources so that AI agents can reason over spreadsheet data without uploading it to the cloud.
 
+## Why This Exists
+
+- **Keep spreadsheets private.** Many teams cannot upload financial or regulated Excel files to hosted services. Running the MCP server locally lets agents analyze data without leaving the device.
+- **Bring Excel into the MCP ecosystem.** Most existing MCP tools focus on text documents or REST APIs. This project fills the gap by translating workbook structure into MCP tools/resources that any compliant client can consume.
+- **Enable agent automation.** With a consistent schema for worksheets, tables, and rows, agents can answer natural language questions, generate summaries, and trigger downstream workflows that depend on spreadsheet context.
+
+## Use Cases
+
+- “What tabs and tables exist in the budget workbook, and who owns each one?”
+- “Find every row across worksheets that references supplier X with an overdue balance.”
+- “Preview the first 20 rows of the quarterly awards table and send it to a teammate.”
+- “Combine this with a local CRM MCP server so the agent can reconcile spreadsheet exports with live system data.”
+
+## Future Enhancements
+
+- Support filtered range previews (e.g., formulas vs. values, pivot expansions).
+- Implement write-back tools to update cells, add worksheets, or annotate findings.
+- Expose analytics such as value distributions, outlier detection, or chart generation.
+- Add WebSocket/HTTP transports so the server can run behind a relay or container orchestration platform.
+
 ## Projects
 
 - `src/ExcelMcp.Server` – MCP server that indexes an Excel workbook with ClosedXML and exposes tools/resources over stdio JSON-RPC.
@@ -40,9 +60,9 @@ The server communicates over stdio following the MCP JSON-RPC framing rules. Ter
 
 | Tool name               | Purpose                                                         |
 |-------------------------|-----------------------------------------------------------------|
-| `excel.list_structure`  | Summarize worksheets, tables, and column headers.               |
-| `excel.search`          | Search for rows containing a text query with optional filters.  |
-| `excel.preview_table`   | Return a CSV preview of a worksheet or table section.           |
+| `excel-list-structure`  | Summarize worksheets, tables, and column headers.               |
+| `excel-search`          | Search for rows containing a text query with optional filters.  |
+| `excel-preview-table`   | Return a CSV preview of a worksheet or table section.           |
 
 ### Resources
 
@@ -57,10 +77,10 @@ The client launches the server process, performs MCP requests, and prints respon
 src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" list
 
 # Search worksheet or table content
-src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" search --query "Contoso" --worksheet "Sales"
+src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" search --query "My Company" --worksheet "Sales"
 
 # Preview a table
-src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" preview --worksheet "Sales" --table "FY24_Summary" --rows 15
+src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" preview --worksheet "Sales" --table "FY25_Summary" --rows 15
 
 # List exposed resources
 src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" resources
@@ -73,14 +93,39 @@ Client flags:
 
 ### Command Reference
 
-- `list` – Calls `excel.list_structure` and prints the textual summary.
-- `search` – Calls `excel.search`; accepts `--query`, `--worksheet`, `--table`, `--limit`, `--case-sensitive`.
-- `preview` – Calls `excel.preview_table`; accepts `--worksheet`, `--table`, `--rows`.
+- `list` – Calls `excel-list-structure` and prints the textual summary.
+- `search` – Calls `excel-search`; accepts `--query`, `--worksheet`, `--table`, `--limit`, `--case-sensitive`.
+- `preview` – Calls `excel-preview-table`; accepts `--worksheet`, `--table`, `--rows`.
 - `resources` – Performs `resources/list` and prints resource metadata.
 
 ## Integrating with Other Agents
 
 Point your MCP-aware agent at the `ExcelMcp.Server` executable, passing the workbook path via `--workbook` or environment variable. After initialization, the agent can discover tools/resources with standard MCP requests and invoke them to pull spreadsheet context into prompts or downstream tools.
+
+### OpenAI Agent Example
+
+The `examples/openai_agent.py` script shows how to register the Excel MCP server as a tool on an OpenAI agent using the Python SDK.
+
+1. Publish or build the server:
+	```pwsh
+	dotnet publish src/ExcelMcp.Server/ExcelMcp.Server.csproj -c Release
+	```
+2. Set environment variables so the script can find the executable and workbook:
+	```pwsh
+	$env:EXCEL_MCP_SERVER_PATH = "D:/GitHub Projects/local-workbook-mcp/src/ExcelMcp.Server/bin/Release/net9.0/ExcelMcp.Server.exe"
+	$env:EXCEL_MCP_WORKBOOK = "D:/Downloads/sampledata.xlsx"
+	$env:OPENAI_API_KEY = "sk-..."
+	```
+3. Install the OpenAI Python package (version 1.42 or newer):
+	```pwsh
+	pip install --upgrade openai
+	```
+4. Run the sample and observe tool invocations in the console:
+	```pwsh
+	python examples/openai_agent.py
+	```
+
+The script creates an agent, registers the MCP transport with `excel-list-structure`, `excel-search`, and `excel-preview-table`, and asks the agent to summarize workbook structure. Modify the prompt or follow-up messages to issue searches or table previews.
 
 ## Notes
 
