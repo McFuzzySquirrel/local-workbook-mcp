@@ -1,0 +1,19 @@
+{
+  "name": "excel-workbook-mcp",
+  "type": "mcp_server",
+  "settings": {
+    "transport": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "ExcelMcp.Adapter/ExcelMcp.Adapter.csproj"
+      ],
+      "env": {
+        "ExcelFile": "C:/Users/you/Documents/agents/data.xlsx"
+      }
+    }
+  },
+  "description": "Local Excel MCP server exposing listSheets, getSheetData, setCell, appendRow"
+}

@@ -1,0 +1,18 @@
+{
+  "servers": {
+    "excel-workbook-mcp-bin": {
+      "type": "stdio",
+      "command": "D:/GitHub Projects/local-workbook-mcp/ExcelMcpServer/dist/adapter/ExcelMcp.Adapter.exe",
+      "args": [],
+      "env": { "ExcelFile": "${input:excel-file}" }
+    }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "excel-file",
+      "description": "Full path to the Excel workbook",
+      "default": "D:/Downloads/sampledata.xlsx"
+    }
+  ]
+}

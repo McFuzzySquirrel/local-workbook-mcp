@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/specification/main/schemas/tool-config.schema.json",
+  "name": "Excel Workbook MCP",
+  "description": "Expose a local Excel workbook to agents via MCP (read/write).",
+  "command": "dotnet",
+  "args": [
+    "run",
+    "--project",
+    "ExcelMcp.Adapter/ExcelMcp.Adapter.csproj"
+  ],
+  "env": {
+    "ExcelFile": "${workspaceFolder}/ExcelMcpServer/data.xlsx"
+  },
+  "metadata": {
+    "homepage": "https://github.com/McFuzzySquirrel/local-workbook-mcp",
+    "author": "Doug McCusker",
+    "license": "MIT"
+  }
+}
