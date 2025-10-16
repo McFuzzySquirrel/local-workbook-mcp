@@ -132,3 +132,26 @@ The script creates an agent, registers the MCP transport with `excel-list-struct
 - ClosedXML loads workbooks into memory; very large files may incur higher memory usage.
 - Search defaults to the first 20 matches; increase via `limit` but beware of large responses.
 - Resource previews return CSV or JSON snippets to keep responses small; fetch the underlying workbook directly if you need the full data.
+
+## Self-Contained Distribution
+
+Package self-contained binaries so end users do not need the .NET SDK:
+
+```pwsh
+pwsh -File scripts/package.ps1            # Produces dist/win-x64 and excel-mcp-win-x64.zip
+pwsh -File scripts/package.ps1 -SkipZip   # Skip archive creation
+pwsh -File scripts/package.ps1 -Runtime win-arm64
+```
+
+The script publishes both the server and client as single-file executables, adds helper launch scripts (`run-client.ps1`, `run-client.bat`, `run-server.ps1`), and drops a quick-start README into `dist/<runtime>`. Send the generated folder or zip to end users; they can double-click `run-client.ps1`, provide a workbook path, and start using the tools immediately. When they need to switch workbooks, re-run the launcher with a different `-WorkbookPath` value.
+
+### MSI Installer (WiX)
+
+To ship a full Windows installer, we include a WiX v4 project that wraps the self-contained bundle into an `.msi`:
+
+```pwsh
+dotnet tool restore                      # restores the wix CLI from .config/dotnet-tools.json
+pwsh -File scripts/package-wix.ps1       # builds the bundle and creates dist/excel-mcp-win-x64.msi
+```
+
+The MSI installs under `Program Files\Excel Local MCP`, adds a Start Menu shortcut pointing to `run-client.bat`, and registers an uninstaller entry. Adjust the `-Runtime` or `-Configuration` parameters to produce installers for other target architectures.
