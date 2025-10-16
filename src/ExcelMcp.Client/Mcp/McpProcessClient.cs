@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 
 namespace ExcelMcp.Client.Mcp;
 
-internal sealed class McpProcessClient : IAsyncDisposable
+public sealed class McpProcessClient : IAsyncDisposable
 {
     private readonly Process _process;
     private readonly JsonRpcClient _jsonRpc;

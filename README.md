@@ -138,12 +138,13 @@ The script creates an agent, registers the MCP transport with `excel-list-struct
 Package self-contained binaries so end users do not need the .NET SDK:
 
 ```pwsh
-pwsh -File scripts/package.ps1            # Produces dist/win-x64 and excel-mcp-win-x64.zip
-pwsh -File scripts/package.ps1 -SkipZip   # Skip archive creation
-pwsh -File scripts/package.ps1 -Runtime win-arm64
+pwsh -File scripts/package.ps1                     # Produces dist/win-x64 and excel-mcp-win-x64.zip
+pwsh -File scripts/package.ps1 -SkipZip            # Skip archive creation
+pwsh -File scripts/package.ps1 -Runtime win-arm64  # Windows on ARM64
+pwsh -File scripts/package.ps1 -Runtime linux-arm64 # Raspberry Pi / Linux ARM64
 ```
 
-The script publishes both the server and client as single-file executables, adds helper launch scripts (`run-client.ps1`, `run-client.bat`, `run-server.ps1`), and drops a quick-start README into `dist/<runtime>`. Send the generated folder or zip to end users; they can double-click `run-client.ps1`, provide a workbook path, and start using the tools immediately. When they need to switch workbooks, re-run the launcher with a different `-WorkbookPath` value.
+The script publishes the server, CLI, and web front end as self-contained single-file executables, adds helper launch scripts (`run-client.*`, `run-server.*`, `run-chat.*`), and drops a quick-start README into `dist/<runtime>`. Send the generated folder or zip to end users; they can run the scripts to choose a workbook and start a chat or command-line session. Re-run the launcher with a different `--workbook` value any time they want to switch files.
 
 ### Using the bundle on another machine
 
@@ -159,17 +160,12 @@ The script publishes both the server and client as single-file executables, adds
    run-client.bat "C:\Data\workbook.xlsx"
    ```
 
-4. Follow the prompts; the launcher ensures the bundled server is started with the provided workbook path and keeps the console open for tool commands.
+4. Follow the prompts; the launcher ensures the bundled server is started with the provided workbook path and keeps the console open for tool commands. To launch the chat UI instead, use `run-chat.ps1` (Windows) or `run-chat.sh` (Linux/macOS).
 
 The server launcher (`run-server.ps1`) is included for scenarios where you want to host the MCP server separately and connect with another client. No additional prerequisites are needed beyond Windows PowerShell 5.1+ or PowerShell Core; the .NET runtime is bundled with the executables. If ExecutionPolicy blocks the PowerShell script, start PowerShell with `-ExecutionPolicy Bypass` or `Unblock-File .\run-client.ps1` after extraction.
 
-### MSI Installer (WiX)
+### Raspberry Pi / Linux ARM64 Notes
 
-To ship a full Windows installer, we include a WiX v4 project that wraps the self-contained bundle into an `.msi`:
-
-```pwsh
-dotnet tool restore                      # restores the wix CLI from .config/dotnet-tools.json
-pwsh -File scripts/package-wix.ps1       # builds the bundle and creates dist/excel-mcp-win-x64.msi
-```
-
-The MSI installs under `Program Files\Excel Local MCP`, adds a Start Menu shortcut pointing to `run-client.bat`, and registers an uninstaller entry. Adjust the `-Runtime` or `-Configuration` parameters to produce installers for other target architectures.
+- Build the bundle with `pwsh -File scripts/package.ps1 -Runtime linux-arm64` on a development machine (cross-publishing works from Windows, macOS, or Linux with the .NET SDK installed).
+- Copy the resulting folder to the Pi, mark the shell scripts executable (`chmod +x run-*.sh`), and launch either `./run-client.sh --workbook /path/to/file.xlsx` or `./run-chat.sh --workbook /path/to/file.xlsx`.
+- The chat front end listens on `http://localhost:5000` by default. Pass `--urls http://0.0.0.0:5000` to bind to all interfaces if you want to access it from another device on your network.
