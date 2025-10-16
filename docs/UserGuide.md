@@ -1,65 +1,67 @@
 # Excel MCP Distribution Guide
 
-This guide walks through packaging the Excel MCP tools, sharing them with end users, and running them in a few common scenarios (self-service chat UI, standalone server, and headless integration).
+This guide walks through packaging the Excel MCP apps, sharing them with end users, and running them in common scenarios (chat UI, standalone server, and integrations).
 
 ## 1. Build the Bundles
 
-Run the packaging script from the repository root. Choose one or more Runtime Identifiers (RIDs) that match the target machines.
+Each component now has its own packaging script. From the repository root run whichever bundles you need, optionally passing one or more Runtime Identifiers (RIDs) such as `win-x64`, `linux-x64`, or `linux-arm64`.
 
 ```powershell
-pwsh -File "scripts/package.ps1" -Runtime @('win-x64','linux-x64')
+pwsh -File scripts/package-server.ps1
+pwsh -File scripts/package-client.ps1 -Runtime @('win-x64','linux-x64')
+pwsh -File scripts/package-chatweb.ps1 -Runtime linux-x64 -SkipZip
 ```
 
-Key outputs:
+Each script publishes a self-contained single-file executable, copies launch helpers (`run-*.ps1`, `run-*.bat`, `run-*.sh`), writes a README, and optionally creates a zip archive.
+
+Key outputs per RID:
 
 - `dist/<rid>/ExcelMcp.Server/ExcelMcp.Server[.exe]`
 - `dist/<rid>/ExcelMcp.Client/ExcelMcp.Client[.exe]`
-- `dist/<rid>/ExcelMcp.ChatWeb/ExcelMcp.ChatWeb[.exe]`
-- Launcher scripts: `run-client`, `run-server`, `run-chat` (`.ps1`, `.bat`, `.sh`)
-- Optional archives: `excel-mcp-<rid>.zip` (omit with `-SkipZip` if you only need the folders)
+- `dist/<rid>/ExcelMcp.ChatWeb/ExcelMcp.ChatWeb[.exe]` plus `wwwroot/`
 
-> **Tip:** The publish step creates self-contained executables; the .NET runtime is bundled and no additional installs are required.
+> **Tip:** The .NET runtime is bundled inside the published executable. Users do not need any additional installs.
 
 ## 2. Share with Users
 
 Distribute either of the following:
 
-- The zip file produced in `dist` (easiest for email or download portals), **or**
-- The entire runtime folder `dist/<rid>` copied onto removable media or a shared drive.
+- The zip file the script produced (`excel-mcp-<app>-<rid>.zip`), **or**
+- The entire folder `dist/<rid>/<AppName>` copied to removable media or a shared drive.
 
-Instruct the user to extract the archive (or copy the folder) to a writable location, e.g.:
+Instruct users to extract or copy to a writable location, for example:
 
 ```
 C:\Apps\ExcelMcp\win-x64
 ~/excel-mcp/linux-x64
 ```
 
-All executables and static assets (including `wwwroot` for the chat UI) are packaged within that directory tree.
+Everything the app needs—including the ChatWeb `wwwroot` assets—is contained within that directory tree.
 
 ## 3. Use Cases and Examples
 
-### 3.1 Launch the Conversational Web UI (Windows)
+### 3.1 Launch the Chat Web UI (Windows)
 
 ```powershell
-cd "C:\Apps\ExcelMcp\win-x64"
-./run-chat.ps1
+cd "C:\Apps\ExcelMcp\win-x64\ExcelMcp.ChatWeb"
+./run-chatweb.ps1
 ```
 
-- The script prompts for a workbook path (for example `D:\Data\finance.xlsx`).
-- It locates the bundled server, sets the required environment variables, and launches `ExcelMcp.ChatWeb.exe`.
-- Browse to the URL shown (defaults to `http://localhost:5000`).
+- The launcher prompts for a workbook path (e.g., `D:\Data\finance.xlsx`).
+- It locates the bundled server, sets environment variables, and starts `ExcelMcp.ChatWeb.exe`.
+- Browse to the URL printed in the console (defaults to `http://localhost:5000`).
 
-For quick launch via double-click, use `run-chat.bat` in the same folder; it calls the PowerShell script behind the scenes.
+Double-click `run-chatweb.bat` for a shortcut that wraps the PowerShell script.
 
-### 3.2 Launch the Conversational Web UI (Linux / macOS)
+### 3.2 Launch the Chat Web UI (Linux / macOS)
 
 ```bash
-cd ~/excel-mcp/linux-x64
-chmod +x run-chat.sh
-./run-chat.sh --workbook /home/user/data/finance.xlsx --urls http://0.0.0.0:8080
+cd ~/excel-mcp/linux-x64/ExcelMcp.ChatWeb
+chmod +x run-chatweb.sh
+./run-chatweb.sh --workbook /home/user/data/finance.xlsx --urls http://0.0.0.0:8080
 ```
 
-The script exports `EXCEL_MCP_WORKBOOK` and points to the bundled server before starting the chat web app. Adjust `--urls` to bind to a different host/port if needed.
+The script exports `EXCEL_MCP_WORKBOOK`, points to the bundled server, and launches the ASP.NET app. Adjust `--urls` to bind to a different host/port.
 
 ### 3.3 Run the Server Manually (Any Platform)
 
@@ -75,17 +77,31 @@ cd ~/excel-mcp/linux-x64/ExcelMcp.Server
 ./ExcelMcp.Server --workbook /home/user/data/finance.xlsx
 ```
 
-- The process hosts the MCP tools over standard input/output.
-- If `--workbook` is omitted and the console is interactive, the executable prompts for the path.
-- Terminate with `Ctrl+C` when finished.
+- The process exposes MCP tools over standard input/output.
+- If `--workbook` is omitted and the console is interactive, the executable prompts for a path.
+- Stop with `Ctrl+C`.
 
-### 3.4 Integrate with Your Own Chat Completion Agent
+### 3.4 Explore Tools with the CLI Client
 
-When embedding into another application:
+```powershell
+cd "C:\Apps\ExcelMcp\win-x64\ExcelMcp.Client"
+./run-client.ps1 -WorkbookPath "D:\Data\finance.xlsx" list
+```
 
-1. Ensure `ExcelMcp.Server` is on disk next to your agent.
-2. Spawn the process with the workbook argument and capture stdio pipes.
-3. Speak MCP JSON-RPC over those pipes to list tools or invoke them.
+```bash
+cd ~/excel-mcp/linux-x64/ExcelMcp.Client
+./run-client.sh --workbook /home/user/data/finance.xlsx search --query "Contoso"
+```
+
+The client wrapper prompts for paths when needed, sets environment variables, and forwards all remaining arguments to the executable.
+
+### 3.5 Embed the Server in Your Own Agent
+
+When launching the MCP server from another application:
+
+1. Ensure `ExcelMcp.Server[.exe]` is alongside your agent binaries.
+2. Spawn it with a workbook argument and capture stdio pipes.
+3. Exchange MCP JSON-RPC messages over those pipes.
 
 Example pseudo-code (C#):
 
@@ -100,38 +116,29 @@ var start = new ProcessStartInfo
     UseShellExecute = false
 };
 var process = Process.Start(start);
-// Connect the pipes to your MCP transport handler
-```
-
-You may reuse the packaged `ExcelMcp.Client` to explore available tools from the command line:
-
-```powershell
-./run-client.ps1 -WorkbookPath "D:\Data\finance.xlsx" list
-```
-
-```bash
-./run-client.sh --workbook /home/user/data/finance.xlsx search --query "Contoso"
+// Wire the streams into your MCP transport handler
 ```
 
 ## 4. Troubleshooting
 
-- **Static file warning for ChatWeb**: Ensure the user extracted the full `ExcelMcp.ChatWeb` folder; the `wwwroot` directory must sit beside the executable.
-- **Workbook prompt repeats**: The scripts set `EXCEL_MCP_WORKBOOK` for the lifetime of the process. Provide the `--workbook` argument or export the variable ahead of time to avoid prompts in automated scenarios.
-- **MCP connection errors**: Verify the workbook path exists and is readable. The server logs to stderr; capture it when embedding in your own agent to diagnose issues.
+- **Missing static files for ChatWeb** – Confirm the `wwwroot` folder sits beside the executable. The packaging script copies it automatically; re-run the script if it is absent.
+- **Workbook prompt repeats** – Provide `--workbook` to the launcher or set `EXCEL_MCP_WORKBOOK` before invoking the executable to avoid interactive prompts in automation.
+- **MCP connection issues** – Ensure the workbook path exists and is readable. Capture stderr from the server process when embedding so you can review diagnostics.
 
-## 5. Regenerating Bundles After Changes
+## 5. Refreshing Bundles After Changes
 
-Whenever code changes are made:
+Whenever you update the source:
 
-1. Run `dotnet test` (optional but recommended).
-2. Re-run the packaging script for each target runtime.
-3. Distribute the updated zip/folder.
+1. Run `dotnet test` (recommended).
+2. Re-run the relevant packaging scripts for each RID you ship.
+3. Distribute the newly generated zip/folder.
 
 ```powershell
-pwsh -File "scripts/package.ps1" -Runtime win-x64
+pwsh -File scripts/package-client.ps1 -Runtime win-x64
+pwsh -File scripts/package-server.ps1 -SkipZip
 ```
 
-Add `-SkipZip` to speed up local testing, or include multiple RIDs in one invocation.
+Add `-SkipZip` when you only need the staged folder, or supply multiple RIDs in a single invocation.
 
 ---
 Questions or feedback? Open an issue or reach out via the project’s discussion channels.
