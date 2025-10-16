@@ -145,6 +145,24 @@ pwsh -File scripts/package.ps1 -Runtime win-arm64
 
 The script publishes both the server and client as single-file executables, adds helper launch scripts (`run-client.ps1`, `run-client.bat`, `run-server.ps1`), and drops a quick-start README into `dist/<runtime>`. Send the generated folder or zip to end users; they can double-click `run-client.ps1`, provide a workbook path, and start using the tools immediately. When they need to switch workbooks, re-run the launcher with a different `-WorkbookPath` value.
 
+### Using the bundle on another machine
+
+1. Copy `excel-mcp-<runtime>.zip` (or the entire `dist/<runtime>` folder) to the destination machine.
+2. Extract the archive anywhere the user has write permission, for example `C:\Tools\ExcelMcp`.
+3. Launch the client with whichever entry point fits the environment:
+
+   ```pwsh
+   # PowerShell (asks for the workbook path if omitted)
+   ./run-client.ps1
+
+   # Windows Command Prompt shortcut
+   run-client.bat "C:\Data\workbook.xlsx"
+   ```
+
+4. Follow the prompts; the launcher ensures the bundled server is started with the provided workbook path and keeps the console open for tool commands.
+
+The server launcher (`run-server.ps1`) is included for scenarios where you want to host the MCP server separately and connect with another client. No additional prerequisites are needed beyond Windows PowerShell 5.1+ or PowerShell Core; the .NET runtime is bundled with the executables. If ExecutionPolicy blocks the PowerShell script, start PowerShell with `-ExecutionPolicy Bypass` or `Unblock-File .\run-client.ps1` after extraction.
+
 ### MSI Installer (WiX)
 
 To ship a full Windows installer, we include a WiX v4 project that wraps the self-contained bundle into an `.msi`:
