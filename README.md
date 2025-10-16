@@ -68,6 +68,31 @@ The server communicates over stdio following the MCP JSON-RPC framing rules. Ter
 
 The server exposes the workbook plus derived worksheet/table resources using the `excel://` scheme. `resources/read` responses include CSV or JSON previews that agents can consume directly.
 
+## Example mcp,json for VS Code
+
+```
+{
+  "servers": {
+    "excel-workbook-mcp": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server.exe",
+      "args": [
+        "--workbook",
+        "${input:excel-workbook-path}"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "id": "excel-workbook-path",
+      "type": "promptString",
+      "description": "Full path to the Excel workbook to load",
+      "default": "D:/Downloads/sampledata.xlsx"
+    }
+  ]
+}
+```
+
 ## Sample Client
 
 The client launches the server process, performs MCP requests, and prints responses to the console.
