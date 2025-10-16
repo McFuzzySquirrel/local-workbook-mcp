@@ -17,16 +17,53 @@ if (command is null)
 }
 
 var workbookPath = ResolveWorkbookPath(globalOptions);
+var interactive = IsInteractive();
+if (workbookPath is null && interactive)
+{
+	Console.Write("Enter the full path to the Excel workbook: ");
+	var input = Console.ReadLine()?.Trim();
+	if (!string.IsNullOrWhiteSpace(input))
+	{
+		workbookPath = Path.GetFullPath(input);
+		Environment.SetEnvironmentVariable("EXCEL_MCP_WORKBOOK", workbookPath);
+	}
+}
+
 if (workbookPath is null)
 {
-	Console.Error.WriteLine("A workbook path is required. Use --workbook or set EXCEL_MCP_WORKBOOK.");
+	Console.Error.WriteLine("A workbook path is required. Use --workbook, set EXCEL_MCP_WORKBOOK, or provide it interactively.");
 	return 1;
 }
 
 var serverPath = ResolveServerPath(globalOptions);
+if (serverPath is null && interactive)
+{
+	var detected = ProbeServerCandidates();
+	if (!string.IsNullOrWhiteSpace(detected))
+	{
+		Console.Write($"Enter the MCP server executable path [{detected}]: ");
+		var input = Console.ReadLine();
+		serverPath = string.IsNullOrWhiteSpace(input) ? detected : Path.GetFullPath(input.Trim());
+	}
+	else
+	{
+		Console.Write("Enter the MCP server executable path: ");
+		var input = Console.ReadLine()?.Trim();
+		if (!string.IsNullOrWhiteSpace(input))
+		{
+			serverPath = Path.GetFullPath(input);
+		}
+	}
+
+	if (!string.IsNullOrWhiteSpace(serverPath))
+	{
+		Environment.SetEnvironmentVariable("EXCEL_MCP_SERVER", serverPath);
+	}
+}
+
 if (serverPath is null || !File.Exists(serverPath))
 {
-	Console.Error.WriteLine("Unable to locate the MCP server executable. Specify --server or set EXCEL_MCP_SERVER.");
+	Console.Error.WriteLine("Unable to locate the MCP server executable. Specify --server, set EXCEL_MCP_SERVER, or provide it interactively.");
 	return 1;
 }
 
@@ -252,9 +289,7 @@ static string? ResolveServerPath(Dictionary<string, string?> options)
 		return Path.GetFullPath(env);
 	}
 
-	var defaultPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "ExcelMcp.Server", "bin", "Debug", "net9.0", OperatingSystem.IsWindows() ? "ExcelMcp.Server.exe" : "ExcelMcp.Server");
-	defaultPath = Path.GetFullPath(defaultPath);
-	return File.Exists(defaultPath) ? defaultPath : null;
+	return ProbeServerCandidates();
 }
 
 static void PrintUsage()
@@ -266,4 +301,32 @@ static void PrintUsage()
 	Console.WriteLine("  search --query <text>        Search workbook content (options: --worksheet, --table, --limit, --case-sensitive).");
 	Console.WriteLine("  preview --worksheet <name>   Preview worksheet or table as CSV (options: --table, --rows).");
 	Console.WriteLine("  resources                    List exposed MCP resources.");
+}
+
+static bool IsInteractive()
+{
+	return !Console.IsInputRedirected && !Console.IsOutputRedirected && !Console.IsErrorRedirected;
+}
+
+static string? ProbeServerCandidates()
+{
+	var fileName = OperatingSystem.IsWindows() ? "ExcelMcp.Server.exe" : "ExcelMcp.Server";
+	var candidates = new[]
+	{
+		Path.Combine(AppContext.BaseDirectory, fileName),
+		Path.Combine(AppContext.BaseDirectory, "ExcelMcp.Server", fileName),
+		Path.Combine(AppContext.BaseDirectory, "..", "ExcelMcp.Server", fileName),
+		Path.Combine(AppContext.BaseDirectory, "..", "..", "ExcelMcp.Server", fileName),
+		Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "ExcelMcp.Server", "bin", "Debug", "net9.0", fileName)
+	};
+
+	foreach (var candidate in candidates.Select(Path.GetFullPath))
+	{
+		if (File.Exists(candidate))
+		{
+			return candidate;
+		}
+	}
+
+	return null;
 }

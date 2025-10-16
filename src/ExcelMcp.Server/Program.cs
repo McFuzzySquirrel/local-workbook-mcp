@@ -2,9 +2,20 @@
 using ExcelMcp.Server.Mcp;
 
 var workbookPath = ResolveWorkbookPath(args);
+if (workbookPath is null && IsInteractive())
+{
+	Console.Write("Enter the full path to the Excel workbook: ");
+	var input = Console.ReadLine()?.Trim();
+	if (!string.IsNullOrWhiteSpace(input))
+	{
+		workbookPath = Path.GetFullPath(input);
+		Environment.SetEnvironmentVariable("EXCEL_MCP_WORKBOOK", workbookPath);
+	}
+}
+
 if (workbookPath is null)
 {
-	Console.Error.WriteLine("A workbook path must be provided via --workbook or the EXCEL_MCP_WORKBOOK environment variable.");
+	Console.Error.WriteLine("A workbook path must be provided via --workbook, EXCEL_MCP_WORKBOOK, or interactively.");
 	return 1;
 }
 
@@ -54,4 +65,9 @@ static string? ResolveWorkbookPath(string[] arguments)
 	}
 
 	return Environment.GetEnvironmentVariable("EXCEL_MCP_WORKBOOK");
+}
+
+static bool IsInteractive()
+{
+	return !Console.IsInputRedirected && !Console.IsOutputRedirected && !Console.IsErrorRedirected;
 }

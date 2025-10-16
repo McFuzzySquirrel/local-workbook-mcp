@@ -1,6 +1,8 @@
 # Excel Local MCP
 
-Local Model Context Protocol (MCP) server and sample client for working with on-disk Excel workbooks. The server exposes worksheet metadata, table previews, and search capabilities via MCP tools and resources so that AI agents can reason over spreadsheet data without uploading it to the cloud.
+Local Model Context Protocol server, CLI client, and chat web UI for working with on-disk Excel workbooks. The server exposes worksheet metadata, table previews, and search capabilities via MCP tools and resources. Everything runs locally, ships with self-contained binaries, and exposes a consistent MCP surface so agents can inspect spreadsheets without uploading them.
+
+> Need the full walkthrough? See [docs/UserGuide.md](docs/UserGuide.md).
 
 ## Why This Exists
 
@@ -22,51 +24,39 @@ Local Model Context Protocol (MCP) server and sample client for working with on-
 - Expose analytics such as value distributions, outlier detection, or chart generation.
 - Add WebSocket/HTTP transports so the server can run behind a relay or container orchestration platform.
 
-## Projects
+## Components
 
-- `src/ExcelMcp.Server` – MCP server that indexes an Excel workbook with ClosedXML and exposes tools/resources over stdio JSON-RPC.
-- `src/ExcelMcp.Client` – Command-line client that launches the server process, performs the MCP handshake, and demonstrates tool and resource usage.
-- `src/ExcelMcp.Contracts` – Shared contracts for workbook metadata and search responses.
+- `src/ExcelMcp.Server` – Stdio JSON-RPC MCP server that indexes a workbook.
+- `src/ExcelMcp.Client` – Command-line tool that starts the server and calls MCP tools/resources.
+- `src/ExcelMcp.ChatWeb` – ASP.NET front end that talks to the server and renders the chat UI.
+- `src/ExcelMcp.Contracts` – Shared data contracts.
+- `docs/UserGuide.md` – Extended walkthrough covering setup, workflows, and troubleshooting.
 
 ## Prerequisites
 
-- .NET SDK 9.0 or newer (`dotnet --version` should report 9.x)
-- Windows, macOS, or Linux capable of running .NET console applications
-- A local `.xlsx` workbook to inspect
+- .NET SDK 9.0+
+- PowerShell 7+ (Windows/macOS/Linux) for the packaging scripts
+- Local `.xlsx` workbook to analyze
 
-## Build
+## Build & Test
 
 ```pwsh
-# From the repository root
 dotnet build
+dotnet test
 ```
 
-## Running the MCP Server
-
-Supply the target workbook path via command-line or environment variable:
+## Quick Starts
 
 ```pwsh
-# Option 1: command-line
-src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server.exe --workbook "D:/Data/finance.xlsx"
+# Run the stdio MCP server directly
+dotnet run --project src/ExcelMcp.Server -- --workbook "D:/Data/sample.xlsx"
 
-# Option 2: environment variable
-$env:EXCEL_MCP_WORKBOOK = "D:/Data/finance.xlsx"
-src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server.exe
+# Use the CLI client (prompts for missing workbook/server values)
+dotnet run --project src/ExcelMcp.Client -- list
+
+# Launch the chat UI (serves wwwroot at http://localhost:5000)
+dotnet run --project src/ExcelMcp.ChatWeb
 ```
-
-The server communicates over stdio following the MCP JSON-RPC framing rules. Terminate with `Ctrl+C` or send a `shutdown` request followed by process exit.
-
-### Tools
-
-| Tool name               | Purpose                                                         |
-|-------------------------|-----------------------------------------------------------------|
-| `excel-list-structure`  | Summarize worksheets, tables, and column headers.               |
-| `excel-search`          | Search for rows containing a text query with optional filters.  |
-| `excel-preview-table`   | Return a CSV preview of a worksheet or table section.           |
-
-### Resources
-
-The server exposes the workbook plus derived worksheet/table resources using the `excel://` scheme. `resources/read` responses include CSV or JSON previews that agents can consume directly.
 
 ## Example mcp,json for VS Code
 
@@ -95,65 +85,18 @@ The server exposes the workbook plus derived worksheet/table resources using the
 
 ## Sample Client
 
-The client launches the server process, performs MCP requests, and prints responses to the console.
+Each app has a dedicated packaging script that publishes single-file executables, copies launch helpers, and writes a README into `dist/<rid>/<AppName>`:
 
 ```pwsh
-# Provide workbook (required) and optional server path
-src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" list
-
-# Search worksheet or table content
-src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" search --query "My Company" --worksheet "Sales"
-
-# Preview a table
-src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" preview --worksheet "Sales" --table "FY25_Summary" --rows 15
-
-# List exposed resources
-src/ExcelMcp.Client/bin/Debug/net9.0/ExcelMcp.Client.exe --workbook "D:/Data/finance.xlsx" resources
+pwsh -File scripts/package-server.ps1   # ExcelMcp.Server
+pwsh -File scripts/package-client.ps1   # ExcelMcp.Client
+pwsh -File scripts/package-chatweb.ps1  # ExcelMcp.ChatWeb (includes wwwroot)
 ```
 
-Client flags:
+Pass `-Runtime` (e.g., `linux-x64`) or `-SkipZip` as needed. The generated folders include `run-*.ps1`, `run-*.sh`, and `run-*.bat` wrappers that prompt for workbook/server paths and start the bundled executable.
 
-- `--server` / `EXCEL_MCP_SERVER` – Optional fully qualified path to the server executable. Defaults to the debug build output if present.
-- `--workbook` / `-w` / `EXCEL_MCP_WORKBOOK` – Path to the Excel workbook (required).
+## Integrate with Agents
 
-### Command Reference
+Point your MCP-capable agent at the packaged server or use the CLI/web app launchers to negotiate workbook/server paths. All tools (`excel-list-structure`, `excel-search`, `excel-preview-table`) and resources (`excel://` URIs) follow the MCP spec, so they work with OpenAI agents, MCP bridges, or any compatible orchestrator.
 
-- `list` – Calls `excel-list-structure` and prints the textual summary.
-- `search` – Calls `excel-search`; accepts `--query`, `--worksheet`, `--table`, `--limit`, `--case-sensitive`.
-- `preview` – Calls `excel-preview-table`; accepts `--worksheet`, `--table`, `--rows`.
-- `resources` – Performs `resources/list` and prints resource metadata.
-
-## Integrating with Other Agents
-
-Point your MCP-aware agent at the `ExcelMcp.Server` executable, passing the workbook path via `--workbook` or environment variable. After initialization, the agent can discover tools/resources with standard MCP requests and invoke them to pull spreadsheet context into prompts or downstream tools.
-
-### OpenAI Agent Example
-
-The `examples/openai_agent.py` script shows how to register the Excel MCP server as a tool on an OpenAI agent using the Python SDK.
-
-1. Publish or build the server:
-	```pwsh
-	dotnet publish src/ExcelMcp.Server/ExcelMcp.Server.csproj -c Release
-	```
-2. Set environment variables so the script can find the executable and workbook:
-	```pwsh
-	$env:EXCEL_MCP_SERVER_PATH = "D:/GitHub Projects/local-workbook-mcp/src/ExcelMcp.Server/bin/Release/net9.0/ExcelMcp.Server.exe"
-	$env:EXCEL_MCP_WORKBOOK = "D:/Downloads/sampledata.xlsx"
-	$env:OPENAI_API_KEY = "sk-..."
-	```
-3. Install the OpenAI Python package (version 1.42 or newer):
-	```pwsh
-	pip install --upgrade openai
-	```
-4. Run the sample and observe tool invocations in the console:
-	```pwsh
-	python examples/openai_agent.py
-	```
-
-The script creates an agent, registers the MCP transport with `excel-list-structure`, `excel-search`, and `excel-preview-table`, and asks the agent to summarize workbook structure. Modify the prompt or follow-up messages to issue searches or table previews.
-
-## Notes
-
-- ClosedXML loads workbooks into memory; very large files may incur higher memory usage.
-- Search defaults to the first 20 matches; increase via `limit` but beware of large responses.
-- Resource previews return CSV or JSON snippets to keep responses small; fetch the underlying workbook directly if you need the full data.
+Refer to [docs/UserGuide.md](docs/UserGuide.md) for detailed workflow examples, environment variables, and troubleshooting notes.
