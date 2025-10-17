@@ -8,12 +8,12 @@ namespace ExcelMcp.ChatWeb.Services;
 
 public sealed class ChatService
 {
-    private readonly IOllamaClient _ollamaClient;
+    private readonly ILlmStudioClient _llmClient;
     private readonly IMcpClient _mcpClient;
 
-    public ChatService(IOllamaClient ollamaClient, IMcpClient mcpClient)
+    public ChatService(ILlmStudioClient llmClient, IMcpClient mcpClient)
     {
-        _ollamaClient = ollamaClient;
+        _llmClient = llmClient;
         _mcpClient = mcpClient;
     }
 
@@ -21,9 +21,9 @@ public sealed class ChatService
     {
         var systemPrompt = await BuildSystemPromptAsync(cancellationToken).ConfigureAwait(false);
 
-        var conversation = new List<OllamaChatMessage>
+        var conversation = new List<LlmStudioChatMessage>
         {
-            OllamaChatMessage.System(systemPrompt)
+            LlmStudioChatMessage.System(systemPrompt)
         };
 
         foreach (var message in request.Messages)
@@ -35,9 +35,9 @@ public sealed class ChatService
 
         while (true)
         {
-            var response = await _ollamaClient.SendChatAsync(conversation, cancellationToken).ConfigureAwait(false);
+            var response = await _llmClient.SendChatAsync(conversation, cancellationToken).ConfigureAwait(false);
             var rawContent = response.Content.Trim();
-            conversation.Add(OllamaChatMessage.Assistant(rawContent));
+            conversation.Add(LlmStudioChatMessage.Assistant(rawContent));
 
             if (TryParseJsonObject(rawContent, out var payload))
             {
@@ -48,7 +48,7 @@ public sealed class ChatService
                     toolCalls.Add(new ToolCallDto(toolName, CloneJson(arguments), summary, result.IsError));
 
                     var followUp = BuildToolFollowUp(toolName, summary, result.IsError);
-                    conversation.Add(OllamaChatMessage.User(followUp));
+                    conversation.Add(LlmStudioChatMessage.User(followUp));
                     continue;
                 }
 
@@ -93,13 +93,13 @@ public sealed class ChatService
         return builder.ToString();
     }
 
-    private static OllamaChatMessage NormalizeMessage(ChatMessageDto message)
+    private static LlmStudioChatMessage NormalizeMessage(ChatMessageDto message)
     {
         return message.Role.ToLowerInvariant() switch
         {
-            "system" => OllamaChatMessage.System(message.Content),
-            "assistant" => OllamaChatMessage.Assistant(message.Content),
-            _ => OllamaChatMessage.User(message.Content)
+            "system" => LlmStudioChatMessage.System(message.Content),
+            "assistant" => LlmStudioChatMessage.Assistant(message.Content),
+            _ => LlmStudioChatMessage.User(message.Content)
         };
     }
 

@@ -93,14 +93,14 @@ Notes
 "@
     Set-Content -Path $readmePath -Value $readme -Encoding UTF8
 
-    $serverLauncherPs1 = @"
+    $serverLauncherPs1 = @'
 param(
     [Parameter(Mandatory = $false)]
     [string]$WorkbookPath
 )
 
 if (-not $WorkbookPath) {
-    $WorkbookPath = Read-Host 'Enter the full path to the Excel workbook'
+    $WorkbookPath = Read-Host "Enter the full path to the Excel workbook"
 }
 
 if (-not (Test-Path $WorkbookPath)) {
@@ -109,7 +109,7 @@ if (-not (Test-Path $WorkbookPath)) {
 }
 
 $resolvedWorkbook = (Resolve-Path $WorkbookPath).Path
-$serverExe = Join-Path $PSScriptRoot '$exeName'
+$serverExe = Join-Path $PSScriptRoot '__EXE_NAME__'
 
 if (-not (Test-Path $serverExe)) {
     Write-Error "Server executable not found at $serverExe"
@@ -118,13 +118,14 @@ if (-not (Test-Path $serverExe)) {
 
 Write-Host "Starting Excel MCP server for $resolvedWorkbook" -ForegroundColor Cyan
 & $serverExe --workbook $resolvedWorkbook
-"@
+'@
+    $serverLauncherPs1 = $serverLauncherPs1.Replace('__EXE_NAME__', $exeName)
     Set-Content -Path (Join-Path $targetDir 'run-server.ps1') -Value $serverLauncherPs1 -Encoding UTF8
 
     $serverLauncherBat = '@echo off`r`npwsh -ExecutionPolicy Bypass -File "%~dp0run-server.ps1" %*`r`n'
     Set-Content -Path (Join-Path $targetDir 'run-server.bat') -Value $serverLauncherBat -Encoding ASCII
 
-    $serverLauncherSh = @"
+    $serverLauncherSh = @'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -133,7 +134,11 @@ if [[ "${SCRIPT_SOURCE}" != /* ]]; then
     SCRIPT_SOURCE="${PWD}/${SCRIPT_SOURCE}"
 fi
 SCRIPT_DIR="${SCRIPT_SOURCE%/*}"
-SERVER_EXE="${SCRIPT_DIR}/$exeName"
+SERVER_EXE="${SCRIPT_DIR}/__EXE_NAME__"
+
+if [[ ! -x "$SERVER_EXE" && -f "$SERVER_EXE" ]]; then
+    chmod +x "$SERVER_EXE" || true
+fi
 
 if [[ ! -x "$SERVER_EXE" ]]; then
     echo "Server executable not found at $SERVER_EXE" >&2
@@ -169,7 +174,8 @@ if [[ ! -f "$WORKBOOK" ]]; then
 fi
 
 exec "$SERVER_EXE" --workbook "$WORKBOOK"
-"@
+'@
+    $serverLauncherSh = $serverLauncherSh.Replace('__EXE_NAME__', $exeName)
     Write-ShellScript -Path (Join-Path $targetDir 'run-server.sh') -Content $serverLauncherSh
 
     if (-not $SkipZip) {

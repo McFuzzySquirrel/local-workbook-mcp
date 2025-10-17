@@ -22,6 +22,30 @@ Key outputs per RID:
 
 > **Tip:** The .NET runtime is bundled inside the published executable. Users do not need any additional installs.
 
+### LM Studio (or OpenAI-Compatible Server) Setup
+
+The chat front end requires an OpenAI-style local inference server to handle `/v1/chat/completions` requests. LM Studio is the default, but any compatible service (Azure AI Foundry local endpoint, open-source bridges, etc.) works as long as it exposes the same REST contract.
+
+Suggested LM Studio steps:
+
+1. Install [LM Studio](https://lmstudio.ai/) and start the desktop app.
+2. Open **Local Server**, download `phi-4-mini-reasoning`, and load it.
+3. Confirm the server is running on `http://localhost:1234` (or note the port you choose) with the Serve API enabled.
+4. Leave LM Studio running while you use the chat UI.
+
+Using another OpenAI-compatible host?
+
+- Point `src/ExcelMcp.ChatWeb/appsettings.json` (or the packaged copy under `dist/<rid>/ExcelMcp.ChatWeb`) to the new endpoint by editing:
+
+    ```json
+    "LlmStudio": {
+        "BaseUrl": "http://localhost:5000",
+        "Model": "my-other-model"
+    }
+    ```
+
+- Restart `ExcelMcp.ChatWeb` after making changes. Provide any required API keys via environment variables if your alternative server enforces authentication.
+
 ## 2. Share with Users
 
 Distribute either of the following:

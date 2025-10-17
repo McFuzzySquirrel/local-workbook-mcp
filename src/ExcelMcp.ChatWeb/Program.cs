@@ -10,8 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 EnsureExcelMcpConfiguration(builder);
 
-builder.Services.AddOptions<OllamaOptions>()
-    .Bind(builder.Configuration.GetSection(OllamaOptions.SectionName))
+builder.Services.AddOptions<LlmStudioOptions>()
+    .Bind(builder.Configuration.GetSection(LlmStudioOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
@@ -24,9 +24,9 @@ builder.Services.AddSingleton<McpClientHost>();
 builder.Services.AddSingleton<IMcpClient>(static sp => sp.GetRequiredService<McpClientHost>());
 builder.Services.AddSingleton<IHostedService>(static sp => sp.GetRequiredService<McpClientHost>());
 
-builder.Services.AddHttpClient<IOllamaClient, OllamaClient>((serviceProvider, client) =>
+builder.Services.AddHttpClient<ILlmStudioClient, LlmStudioClient>((serviceProvider, client) =>
 {
-    var options = serviceProvider.GetRequiredService<IOptions<OllamaOptions>>().Value;
+    var options = serviceProvider.GetRequiredService<IOptions<LlmStudioOptions>>().Value;
     client.BaseAddress = new Uri(options.BaseUrl, UriKind.Absolute);
     client.Timeout = TimeSpan.FromSeconds(120);
 });

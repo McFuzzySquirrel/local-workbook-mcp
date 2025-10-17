@@ -47,6 +47,8 @@ dotnet test
 
 ## Quick Starts
 
+> **Note:** The chat web app expects [LM Studio](https://lmstudio.ai/) (or any OpenAI-compatible local server) to be running on `http://localhost:1234` with the `phi-4-mini-reasoning` model downloaded and loaded. Update `LlmStudio:BaseUrl` and `LlmStudio:Model` in `appsettings.json` if you host a different endpoint/model. See the user guide for setup steps.
+
 ```pwsh
 # Run the stdio MCP server directly
 dotnet run --project src/ExcelMcp.Server -- --workbook "D:/Data/sample.xlsx"

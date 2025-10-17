@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json.Nodes;
 using ExcelMcp.ChatWeb.Models;
 using ExcelMcp.ChatWeb.Services;
@@ -11,7 +12,7 @@ public sealed class ChatServiceTests
     [Fact]
     public async Task HandleAsync_ProcessesToolCallAndReturnsFinalResponse()
     {
-        var ollama = new FakeOllamaClient(
+        var llm = new FakeLlmStudioClient(
         [
             "{\"type\":\"tool_call\",\"tool\":\"excel-list-structure\",\"arguments\":{}}",
             "{\"type\":\"final_response\",\"message\":\"Here you go.\"}"
@@ -35,7 +36,7 @@ public sealed class ChatServiceTests
                 false))
         };
 
-        var service = new ChatService(ollama, mcp);
+        var service = new ChatService(llm, mcp);
         var request = new ChatRequestDto(new List<ChatMessageDto>
         {
             new("user", "List the sheets in my workbook.")
@@ -52,8 +53,8 @@ public sealed class ChatServiceTests
         Assert.Single(mcp.Invocations);
         Assert.Equal("excel-list-structure", mcp.Invocations[0].Name);
 
-        Assert.True(ollama.Conversations.Count >= 2, "Expected at least two model turns.");
-        var followUp = ollama.Conversations[1].Last();
+        Assert.True(llm.Conversations.Count >= 2, "Expected at least two model turns.");
+        var followUp = llm.Conversations[1].Last();
         Assert.Equal("user", followUp.Role);
         Assert.Contains("Tool excel-list-structure", followUp.Content);
     }
@@ -61,13 +62,13 @@ public sealed class ChatServiceTests
     [Fact]
     public async Task HandleAsync_ReturnsPlainTextWhenModelProducesNonJson()
     {
-        var ollama = new FakeOllamaClient([
+        var llm = new FakeLlmStudioClient([
             "Here is what I found in your workbook."
         ]);
 
         var toolDefinition = new McpToolDefinition("excel-search", "Search workbook", new JsonObject());
         var mcp = new FakeMcpClient([toolDefinition]);
-        var service = new ChatService(ollama, mcp);
+        var service = new ChatService(llm, mcp);
 
         var request = new ChatRequestDto(new List<ChatMessageDto>
         {
@@ -84,7 +85,7 @@ public sealed class ChatServiceTests
     [Fact]
     public async Task HandleAsync_FlagsToolErrorSummary()
     {
-        var ollama = new FakeOllamaClient(
+        var llm = new FakeLlmStudioClient(
         [
             "{\"type\":\"tool_call\",\"tool\":\"excel-preview\",\"arguments\":{\"worksheet\":\"Sheet1\"}}",
             "{\"type\":\"final_response\",\"message\":\"I was unable to preview the sheet because the tool errored.\"}"
@@ -98,7 +99,7 @@ public sealed class ChatServiceTests
                 true))
         };
 
-        var service = new ChatService(ollama, mcp);
+        var service = new ChatService(llm, mcp);
         var request = new ChatRequestDto(new List<ChatMessageDto>
         {
             new("user", "Show me Sheet1.")
@@ -113,20 +114,20 @@ public sealed class ChatServiceTests
         Assert.Equal("I was unable to preview the sheet because the tool errored.", response.Reply);
     }
 
-    private sealed class FakeOllamaClient : IOllamaClient
+    private sealed class FakeLlmStudioClient : ILlmStudioClient
     {
         private readonly Queue<string> _responses;
 
-        public FakeOllamaClient(IEnumerable<string> responses)
+        public FakeLlmStudioClient(IEnumerable<string> responses)
         {
             _responses = new Queue<string>(responses);
         }
 
-        public List<List<OllamaChatMessage>> Conversations { get; } = new();
+        public List<List<LlmStudioChatMessage>> Conversations { get; } = new();
 
-        public Task<OllamaChatResponse> SendChatAsync(IReadOnlyList<OllamaChatMessage> messages, CancellationToken cancellationToken)
+        public Task<LlmStudioChatResponse> SendChatAsync(IReadOnlyList<LlmStudioChatMessage> messages, CancellationToken cancellationToken)
         {
-            var snapshot = messages.Select(m => new OllamaChatMessage(m.Role, m.Content)).ToList();
+            var snapshot = messages.Select(m => new LlmStudioChatMessage(m.Role, m.Content)).ToList();
             Conversations.Add(snapshot);
 
             if (_responses.Count == 0)
@@ -135,7 +136,16 @@ public sealed class ChatServiceTests
             }
 
             var next = _responses.Dequeue();
-            return Task.FromResult(new OllamaChatResponse(new OllamaChatMessage("assistant", next), true));
+            return Task.FromResult(new LlmStudioChatResponse
+            {
+                Choices = new List<LlmStudioChatChoice>
+                {
+                    new LlmStudioChatChoice
+                    {
+                        Message = LlmStudioChatMessage.Assistant(next)
+                    }
+                }
+            });
         }
     }
 
