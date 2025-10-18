@@ -103,10 +103,10 @@ Refer to [docs/UserGuide.md](docs/UserGuide.md) for detailed workflow examples, 
 
 ## Acknowledgements
 
-This project relies on the excellent ClosedXML library (https://github.com/ClosedXML/ClosedXML)as its core engine for reading and writing Excel workbooks (.xlsx files).
+This project relies on the excellent ClosedXML library (https://github.com/ClosedXML/ClosedXML) as its core engine for reading and writing Excel workbooks (.xlsx files).
 ClosedXML provides a clean, intuitive API built on top of the OpenXML SDK, allowing this MCP server to interact with Excel data without requiring Microsoft Excel or any COM automation.
 
-Every workbook operation exposed through this MCP server — such as reading rows, writing cell values, or adding data — is powered internally by ClosedXML.
+Every workbook operation exposed through this MCP server, such as reading rows, writing cell values, or adding data, is powered internally by ClosedXML.
 
-A huge thank-you to the ClosedXML maintainers and contributors for their ongoing work on one of the most reliable and developer-friendly Excel libraries in the .NET ecosystem.
+A huge thank you to the ClosedXML maintainers and contributors for their ongoing work on one of the most reliable and developer-friendly Excel libraries in the .NET ecosystem.
 Your project makes it possible for tools like this to exist and run cross-platform in lightweight environments
