@@ -19,6 +19,8 @@ Local Model Context Protocol server, CLI client, and chat web UI for working wit
 
 ## Future Enhancements
 
+See the evolving roadmap in [docs/FutureFeatures.md](docs/FutureFeatures.md). Highlights on deck:
+
 - Support filtered range previews (e.g., formulas vs. values, pivot expansions).
 - Implement write-back tools to update cells, add worksheets, or annotate findings.
 - Expose analytics such as value distributions, outlier detection, or chart generation.
@@ -31,6 +33,7 @@ Local Model Context Protocol server, CLI client, and chat web UI for working wit
 - `src/ExcelMcp.ChatWeb` – ASP.NET front end that talks to the server and renders the chat UI.
 - `src/ExcelMcp.Contracts` – Shared data contracts.
 - `docs/UserGuide.md` – Extended walkthrough covering setup, workflows, and troubleshooting.
+- `docs/FutureFeatures.md` – Forward-looking ideas we plan to explore.
 
 ## Prerequisites
 
@@ -77,3 +80,13 @@ Pass `-Runtime` (e.g., `linux-x64`) or `-SkipZip` as needed. The generated folde
 Point your MCP-capable agent at the packaged server or use the CLI/web app launchers to negotiate workbook/server paths. All tools (`excel-list-structure`, `excel-search`, `excel-preview-table`) and resources (`excel://` URIs) follow the MCP spec, so they work with OpenAI agents, MCP bridges, or any compatible orchestrator.
 
 Refer to [docs/UserGuide.md](docs/UserGuide.md) for detailed workflow examples, environment variables, and troubleshooting notes.
+
+## Acknowledgements
+
+This project relies on the excellent ClosedXML library (https://github.com/ClosedXML/ClosedXML) as its core engine for reading and writing Excel workbooks (.xlsx files).
+ClosedXML provides a clean, intuitive API built on top of the OpenXML SDK, allowing this MCP server to interact with Excel data without requiring Microsoft Excel or any COM automation.
+
+Every workbook operation exposed through this MCP server, such as reading rows, writing cell values, or adding data, is powered internally by ClosedXML.
+
+A huge thank you to the ClosedXML maintainers and contributors for their ongoing work on one of the most reliable and developer-friendly Excel libraries in the .NET ecosystem.
+Your project makes it possible for tools like this to exist and run cross-platform in lightweight environments
