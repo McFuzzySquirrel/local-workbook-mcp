@@ -3,6 +3,7 @@ const chatForm = document.getElementById("chat-form");
 const chatText = document.getElementById("chat-text");
 const sendButton = document.getElementById("send-button");
 const yearLabel = document.getElementById("year");
+const modelLabel = document.getElementById("model-label");
 
 const conversation = [];
 let isBusy = false;
@@ -112,6 +113,26 @@ async function sendMessage(prompt) {
     }
 }
 
+async function refreshModelInfo() {
+    if (!modelLabel) {
+        return;
+    }
+
+    try {
+        const response = await fetch("/api/model", { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        const model = typeof data.model === "string" && data.model.trim().length > 0 ? data.model.trim() : "unknown";
+        const baseUrl = typeof data.baseUrl === "string" && data.baseUrl.trim().length > 0 ? data.baseUrl.trim() : "";
+        modelLabel.textContent = baseUrl ? `Model: ${model} @ ${baseUrl}` : `Model: ${model}`;
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        modelLabel.textContent = `Model: unavailable (${reason})`;
+    }
+}
+
 chatForm?.addEventListener("submit", async event => {
     event.preventDefault();
     if (isBusy) {
@@ -138,4 +159,5 @@ chatText?.addEventListener("keydown", event => {
 
 appendMessage("assistant", "Hello! Ask me anything about your workbook.");
 updateYear();
+refreshModelInfo();
 chatText?.focus();

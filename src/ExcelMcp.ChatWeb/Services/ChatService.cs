@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -8,12 +9,12 @@ namespace ExcelMcp.ChatWeb.Services;
 
 public sealed class ChatService
 {
-    private readonly IOllamaClient _ollamaClient;
+    private readonly ILlmStudioClient _llmClient;
     private readonly IMcpClient _mcpClient;
 
-    public ChatService(IOllamaClient ollamaClient, IMcpClient mcpClient)
+    public ChatService(ILlmStudioClient llmClient, IMcpClient mcpClient)
     {
-        _ollamaClient = ollamaClient;
+        _llmClient = llmClient;
         _mcpClient = mcpClient;
     }
 
@@ -21,9 +22,9 @@ public sealed class ChatService
     {
         var systemPrompt = await BuildSystemPromptAsync(cancellationToken).ConfigureAwait(false);
 
-        var conversation = new List<OllamaChatMessage>
+        var conversation = new List<LlmStudioChatMessage>
         {
-            OllamaChatMessage.System(systemPrompt)
+            LlmStudioChatMessage.System(systemPrompt)
         };
 
         foreach (var message in request.Messages)
@@ -35,9 +36,23 @@ public sealed class ChatService
 
         while (true)
         {
-            var response = await _ollamaClient.SendChatAsync(conversation, cancellationToken).ConfigureAwait(false);
+            LlmStudioChatResponse response;
+            try
+            {
+                response = await _llmClient.SendChatAsync(conversation, cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException ex)
+            {
+                var message = $"LLM request failed: {ex.Message}";
+                return new ChatResponseDto(message, toolCalls);
+            }
+            catch (Exception ex)
+            {
+                var message = $"Unexpected error contacting language model: {ex.Message}";
+                return new ChatResponseDto(message, toolCalls);
+            }
             var rawContent = response.Content.Trim();
-            conversation.Add(OllamaChatMessage.Assistant(rawContent));
+            conversation.Add(LlmStudioChatMessage.Assistant(rawContent));
 
             if (TryParseJsonObject(rawContent, out var payload))
             {
@@ -48,7 +63,7 @@ public sealed class ChatService
                     toolCalls.Add(new ToolCallDto(toolName, CloneJson(arguments), summary, result.IsError));
 
                     var followUp = BuildToolFollowUp(toolName, summary, result.IsError);
-                    conversation.Add(OllamaChatMessage.User(followUp));
+                    conversation.Add(LlmStudioChatMessage.User(followUp));
                     continue;
                 }
 
@@ -67,7 +82,11 @@ public sealed class ChatService
         var tools = await _mcpClient.ListToolsAsync(cancellationToken).ConfigureAwait(false);
         var builder = new StringBuilder();
         builder.AppendLine("You are an assistant that helps users understand and work with Excel workbooks.");
-        builder.AppendLine("You may call the following tools when needed. Respond only with compact JSON—no prose outside JSON.");
+        builder.AppendLine("The workbook is already loaded and accessible through the listed tools—never claim you lack access.");
+        builder.AppendLine("Use the tools to gather facts before answering. If a user asks about workbook content, call at least one tool first.");
+        builder.AppendLine("Always reference tools by their exact names (including the 'excel-' prefix).");
+        builder.AppendLine();
+        builder.AppendLine("Available tools and their schemas:");
 
         foreach (var tool in tools)
         {
@@ -84,22 +103,30 @@ public sealed class ChatService
         }
 
         builder.AppendLine();
+        builder.AppendLine("Usage tips:");
+        builder.AppendLine("- Use excel-list-structure with {} to summarize worksheets, tables, and columns.");
+        builder.AppendLine("- Use excel-search when you need to locate rows that match a query.");
+        builder.AppendLine("- Use excel-preview-table to show sample rows from a worksheet or table.");
+        builder.AppendLine();
+        builder.AppendLine("Respond only with compact JSON—no prose outside JSON.");
         builder.AppendLine("When you need a tool, reply EXACTLY with:");
-        builder.AppendLine("{\"type\":\"tool_call\",\"tool\":\"tool-name\",\"arguments\":{...}}" );
+        builder.AppendLine("{\"type\":\"tool_call\",\"tool\":\"excel-tool-name\",\"arguments\":{...}}");
         builder.AppendLine("When you can answer, reply EXACTLY with:");
-        builder.AppendLine("{\"type\":\"final_response\",\"message\":\"helpful answer\"}" );
+        builder.AppendLine("{\"type\":\"final_response\",\"message\":\"concise helpful answer\"}");
+        builder.AppendLine("Example tool call: {\"type\":\"tool_call\",\"tool\":\"excel-list-structure\",\"arguments\":{}}");
+        builder.AppendLine("Example final response: {\"type\":\"final_response\",\"message\":\"Worksheet summary...\"}");
         builder.AppendLine("Never add code fences or extra commentary. Favour concise answers.");
 
         return builder.ToString();
     }
 
-    private static OllamaChatMessage NormalizeMessage(ChatMessageDto message)
+    private static LlmStudioChatMessage NormalizeMessage(ChatMessageDto message)
     {
         return message.Role.ToLowerInvariant() switch
         {
-            "system" => OllamaChatMessage.System(message.Content),
-            "assistant" => OllamaChatMessage.Assistant(message.Content),
-            _ => OllamaChatMessage.User(message.Content)
+            "system" => LlmStudioChatMessage.System(message.Content),
+            "assistant" => LlmStudioChatMessage.Assistant(message.Content),
+            _ => LlmStudioChatMessage.User(message.Content)
         };
     }
 

@@ -19,6 +19,8 @@ Local Model Context Protocol server, CLI client, and chat web UI for working wit
 
 ## Future Enhancements
 
+See the evolving roadmap in [docs/FutureFeatures.md](docs/FutureFeatures.md). Highlights on deck:
+
 - Support filtered range previews (e.g., formulas vs. values, pivot expansions).
 - Implement write-back tools to update cells, add worksheets, or annotate findings.
 - Expose analytics such as value distributions, outlier detection, or chart generation.
@@ -31,6 +33,7 @@ Local Model Context Protocol server, CLI client, and chat web UI for working wit
 - `src/ExcelMcp.ChatWeb` – ASP.NET front end that talks to the server and renders the chat UI.
 - `src/ExcelMcp.Contracts` – Shared data contracts.
 - `docs/UserGuide.md` – Extended walkthrough covering setup, workflows, and troubleshooting.
+- `docs/FutureFeatures.md` – Forward-looking ideas we plan to explore.
 
 ## Prerequisites
 
@@ -46,6 +49,8 @@ dotnet test
 ```
 
 ## Quick Starts
+
+> **Note:** The chat web app expects [LM Studio](https://lmstudio.ai/) (or any OpenAI-compatible local server) to be running on `http://localhost:1234` with the `phi-4-mini-reasoning` model downloaded and loaded. Update `LlmStudio:BaseUrl` and `LlmStudio:Model` in `appsettings.json` if you host a different endpoint/model. See the user guide for setup steps.
 
 ```pwsh
 # Run the stdio MCP server directly
