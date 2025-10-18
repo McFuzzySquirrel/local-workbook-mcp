@@ -88,9 +88,13 @@ public sealed class McpProcessClient : IAsyncDisposable
     {
         var parameters = new JsonObject
         {
-            ["name"] = name,
-            ["arguments"] = arguments
+            ["name"] = name
         };
+
+        if (arguments is not null)
+        {
+            parameters["arguments"] = arguments.DeepClone();
+        }
 
         using var response = await _jsonRpc.SendRequestAsync("tools/call", parameters, cancellationToken).ConfigureAwait(false);
         if (response.RootElement.TryGetProperty("error", out var error))

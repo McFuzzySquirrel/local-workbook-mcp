@@ -143,6 +143,38 @@ var process = Process.Start(start);
 // Wire the streams into your MCP transport handler
 ```
 
+### 3.6 Page Through Large Searches
+
+`excel-search` returns up to 100 rows per call. When additional matches exist the JSON payload includes `"hasMore": true` and a `nextCursor` token. Supply that token on the next call to retrieve the following page.
+
+- **CLI example**
+
+    ```powershell
+    dotnet run --project src/ExcelMcp.Client -- search --query "Dividend" --limit 25
+    # Copy "nextCursor" from the JSON response, then:
+    dotnet run --project src/ExcelMcp.Client -- search --query "Dividend" --limit 25 --cursor 25
+    ```
+
+- **Chat web** – the assistant surfaces `Next cursor: <value>` in the tool output and nudges the model to call the tool again with `{"cursor":"<value>"}` when more rows are available.
+
+### 3.7 Preview Worksheets with Pagination
+
+`excel-preview-table` supports the same cursor pattern so you can stream worksheets or tables in manageable pages. The tool now returns structured JSON plus CSV text. Use the JSON for automation and reference the CSV when you want a quick copy/paste view.
+
+- **CLI example**
+
+    ```powershell
+    dotnet run --project src/ExcelMcp.Client -- preview --worksheet "Transactions" --rows 15
+    # When the JSON block reports "nextCursor": "15":
+    dotnet run --project src/ExcelMcp.Client -- preview --worksheet "Transactions" --rows 15 --cursor 15
+    ```
+
+    The CLI prints the structured JSON (headers, row numbers, `hasMore`, `nextCursor`) before the CSV snippet. Copy the cursor value when more pages remain.
+
+- **Chat web Preview panel** – The panel beneath the chat input labelled *Preview Workbook Data* calls `excel-preview-table` directly. Enter the worksheet/table (worksheet names auto-complete from discovered resources), click **Preview**, and use **Load more** to fetch the next page without leaving the UI. Collapse it with **Hide** if you need more vertical space; the offset and next cursor remain visible when expanded again.
+
+- **Agents** – When invoking the tool programmatically, supply `{"cursor":"<token>"}` alongside the original arguments to continue where you left off.
+
 ## 4. Troubleshooting
 
 - **Missing static files for ChatWeb** – Confirm the `wwwroot` folder sits beside the executable. The packaging script copies it automatically; re-run the script if it is absent.

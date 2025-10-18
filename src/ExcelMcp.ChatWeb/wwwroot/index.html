@@ -29,6 +29,38 @@
                     </div>
                 </div>
             </form>
+            <section class="tools-panel" id="tools-panel">
+                <div class="tools-header">
+                    <div class="tools-title">
+                        <h2>Preview Workbook Data</h2>
+                        <p>Call the excel-preview-table tool directly and paginate through large worksheets.</p>
+                    </div>
+                    <button type="button" class="tool-toggle" id="preview-toggle" aria-expanded="true">Hide</button>
+                </div>
+                <div class="tools-body" id="tools-body">
+                    <form class="tool-form" id="preview-form">
+                        <label class="tool-field">
+                            <span>Worksheet</span>
+                            <input type="text" id="preview-worksheet" placeholder="Sheet name" list="worksheet-options" required />
+                            <datalist id="worksheet-options"></datalist>
+                        </label>
+                        <label class="tool-field">
+                            <span>Table (optional)</span>
+                            <input type="text" id="preview-table" placeholder="Table name" />
+                        </label>
+                        <label class="tool-field">
+                            <span>Rows per page</span>
+                            <input type="number" id="preview-rows" min="1" max="100" value="10" />
+                        </label>
+                        <div class="tool-actions">
+                            <button type="submit" class="tool-button" id="preview-run">Preview</button>
+                            <button type="button" class="tool-button secondary" id="preview-load-more" disabled>Load more</button>
+                        </div>
+                    </form>
+                    <div class="tool-status" id="preview-status"></div>
+                    <div class="preview-output" id="preview-output"></div>
+                </div>
+            </section>
         </div>
         <footer class="app-footer">
             <span>&copy; <span id="year"></span> Workbook MCP</span>

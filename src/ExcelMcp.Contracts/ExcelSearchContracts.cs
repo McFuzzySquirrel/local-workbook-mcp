@@ -5,12 +5,14 @@ public sealed record ExcelSearchArguments(
     string? Worksheet = null,
     string? Table = null,
     int? Limit = null,
-    bool CaseSensitive = false
+    bool CaseSensitive = false,
+    string? Cursor = null
 );
 
 public sealed record ExcelSearchResult(
     IReadOnlyList<ExcelRowResult> Rows,
-    bool HasMore
+    bool HasMore,
+    string? NextCursor
 );
 
 public sealed record ExcelRowResult(

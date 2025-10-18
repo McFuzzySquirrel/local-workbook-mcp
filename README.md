@@ -79,6 +79,9 @@ Pass `-Runtime` (e.g., `linux-x64`) or `-SkipZip` as needed. The generated folde
 
 Point your MCP-capable agent at the packaged server or use the CLI/web app launchers to negotiate workbook/server paths. All tools (`excel-list-structure`, `excel-search`, `excel-preview-table`) and resources (`excel://` URIs) follow the MCP spec, so they work with OpenAI agents, MCP bridges, or any compatible orchestrator.
 
+- `excel-search` responses include `nextCursor` when more rows remain—pass it back via the `cursor` argument to page through large datasets.
+- `excel-preview-table` now emits structured JSON along with CSV text. Use the `cursor` argument (and returned `nextCursor`) to stream large worksheets or tables a page at a time. The CLI understands `--cursor`, and the web UI exposes a "Load more" control plus a collapsible Preview panel with auto-complete worksheet names.
+
 Refer to [docs/UserGuide.md](docs/UserGuide.md) for detailed workflow examples, environment variables, and troubleshooting notes.
 
 ## Acknowledgements

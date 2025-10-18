@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -33,6 +34,8 @@ public sealed class ChatService
         }
 
         var toolCalls = new List<ToolCallDto>();
+        var fallbackAttempts = 0;
+        const int MaxFallbackAttempts = 2;
 
         while (true)
         {
@@ -59,10 +62,10 @@ public sealed class ChatService
                 if (IsToolCall(payload, out var toolName, out var arguments))
                 {
                     var result = await _mcpClient.CallToolAsync(toolName, arguments, cancellationToken).ConfigureAwait(false);
-                    var summary = SummarizeToolResult(result);
+                    var summary = SummarizeToolResult(result, out var continuationInstruction);
                     toolCalls.Add(new ToolCallDto(toolName, CloneJson(arguments), summary, result.IsError));
 
-                    var followUp = BuildToolFollowUp(toolName, summary, result.IsError);
+                    var followUp = BuildToolFollowUp(toolName, summary, result.IsError, continuationInstruction);
                     conversation.Add(LlmStudioChatMessage.User(followUp));
                     continue;
                 }
@@ -73,6 +76,14 @@ public sealed class ChatService
                 }
             }
 
+            if (fallbackAttempts < MaxFallbackAttempts)
+            {
+                fallbackAttempts++;
+                var reminder = BuildFormatReminder(toolCalls.Count > 0);
+                conversation.Add(LlmStudioChatMessage.User(reminder));
+                continue;
+            }
+
             return new ChatResponseDto(rawContent, toolCalls);
         }
     }
@@ -80,10 +91,21 @@ public sealed class ChatService
     private async Task<string> BuildSystemPromptAsync(CancellationToken cancellationToken)
     {
         var tools = await _mcpClient.ListToolsAsync(cancellationToken).ConfigureAwait(false);
+        var resources = await _mcpClient.ListResourcesAsync(cancellationToken).ConfigureAwait(false);
+        var worksheetNames = resources
+            .Where(static r => string.Equals(r.Uri.Scheme, "excel", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(r.Uri.Host, "worksheet", StringComparison.OrdinalIgnoreCase))
+            .Select(static r => Uri.UnescapeDataString(r.Uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty))
+            .Where(static name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
         var builder = new StringBuilder();
         builder.AppendLine("You are an assistant that helps users understand and work with Excel workbooks.");
         builder.AppendLine("The workbook is already loaded and accessible through the listed tools—never claim you lack access.");
         builder.AppendLine("Use the tools to gather facts before answering. If a user asks about workbook content, call at least one tool first.");
+        builder.AppendLine("Do not invent worksheet or table names. When unsure, inspect the structure first.");
         builder.AppendLine("Always reference tools by their exact names (including the 'excel-' prefix).");
         builder.AppendLine();
         builder.AppendLine("Available tools and their schemas:");
@@ -105,8 +127,20 @@ public sealed class ChatService
         builder.AppendLine();
         builder.AppendLine("Usage tips:");
         builder.AppendLine("- Use excel-list-structure with {} to summarize worksheets, tables, and columns.");
-        builder.AppendLine("- Use excel-search when you need to locate rows that match a query.");
-        builder.AppendLine("- Use excel-preview-table to show sample rows from a worksheet or table.");
+        builder.AppendLine("- Use excel-search when you need to locate rows that match a query. Omit worksheet/table filters if you need to search the entire workbook or you have not confirmed a specific sheet.");
+        builder.AppendLine("- Use excel-preview-table to show sample rows from a worksheet or table; pass the returned nextCursor back via the cursor argument to keep paging.");
+
+        if (worksheetNames.Length > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("Known worksheets in this workbook:");
+            foreach (var worksheet in worksheetNames)
+            {
+                builder.Append("  - ");
+                builder.AppendLine(worksheet);
+            }
+        }
+
         builder.AppendLine();
         builder.AppendLine("Respond only with compact JSON—no prose outside JSON.");
         builder.AppendLine("When you need a tool, reply EXACTLY with:");
@@ -226,9 +260,12 @@ public sealed class ChatService
         return true;
     }
 
-    private static string SummarizeToolResult(McpToolCallResult result)
+    private static string SummarizeToolResult(McpToolCallResult result, out string? continuationInstruction)
     {
+        continuationInstruction = null;
         var builder = new StringBuilder();
+        var cursorAppended = false;
+
         foreach (var item in result.Content)
         {
             if (string.Equals(item.Type, "text", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(item.Text))
@@ -238,6 +275,23 @@ public sealed class ChatService
             else if (string.Equals(item.Type, "json", StringComparison.OrdinalIgnoreCase) && item.Json is not null)
             {
                 builder.AppendLine(item.Json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+
+                if (item.Json is JsonObject obj)
+                {
+                    var hasMore = obj.TryGetPropertyValue("hasMore", out var hasMoreNode) && hasMoreNode is JsonValue hasMoreValue && hasMoreValue.TryGetValue<bool>(out var hasMoreFlag) && hasMoreFlag;
+                    var nextCursor = obj.TryGetPropertyValue("nextCursor", out var cursorNode) ? cursorNode?.GetValue<string?>() : null;
+
+                    if (hasMore && !string.IsNullOrWhiteSpace(nextCursor))
+                    {
+                        if (!cursorAppended)
+                        {
+                            builder.AppendLine($"Next cursor: {nextCursor}");
+                            cursorAppended = true;
+                        }
+
+                        continuationInstruction ??= $"More results are available. Call the tool again with {{\"cursor\":\"{nextCursor}\"}}.";
+                    }
+                }
             }
         }
 
@@ -249,7 +303,21 @@ public sealed class ChatService
         return builder.ToString().Trim();
     }
 
-    private static string BuildToolFollowUp(string toolName, string toolOutput, bool isError)
+    private static string BuildFormatReminder(bool toolUsed)
+    {
+        var reminder = new StringBuilder();
+        reminder.AppendLine("Reminder: respond strictly using the JSON formats provided earlier.");
+        reminder.AppendLine("If the user requests workbook content or calculations, call an Excel MCP tool (excel-list-structure, excel-search, excel-preview-table) before answering.");
+        reminder.AppendLine("Do not guess worksheet/table names—search the entire workbook by omitting filters unless you confirmed a specific sheet.");
+        if (!toolUsed)
+        {
+            reminder.AppendLine("Do not claim you lack access—the workbook tools are available. Start with a tool_call JSON payload now.");
+        }
+        reminder.Append("Reply with either a tool_call or final_response JSON object only.");
+        return reminder.ToString();
+    }
+
+    private static string BuildToolFollowUp(string toolName, string toolOutput, bool isError, string? continuationInstruction)
     {
         var builder = new StringBuilder();
         builder.Append("Tool ");
@@ -257,6 +325,10 @@ public sealed class ChatService
         builder.Append(isError ? " produced an error:" : " returned:");
         builder.AppendLine();
         builder.AppendLine(toolOutput);
+        if (!string.IsNullOrWhiteSpace(continuationInstruction))
+        {
+            builder.AppendLine(continuationInstruction);
+        }
         builder.AppendLine("Use this information to continue the conversation and provide the user with a concise, helpful update.");
         return builder.ToString();
     }

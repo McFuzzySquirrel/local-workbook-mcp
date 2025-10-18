@@ -12,8 +12,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\ExcelMcp.ChatWeb\ExcelMcp.ChatWeb.csproj" />
+    <ProjectReference Include="..\..\src\ExcelMcp.Server\ExcelMcp.Server.csproj" />
   </ItemGroup>
 </Project>

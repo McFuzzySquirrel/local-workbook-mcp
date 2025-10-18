@@ -1,3 +1,6 @@
+using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using ExcelMcp.ChatWeb.Models;
 using ExcelMcp.ChatWeb.Options;
 using ExcelMcp.ChatWeb.Services;
@@ -48,6 +51,104 @@ app.MapPost("/api/chat", async (ChatRequestDto request, ChatService chatService,
 {
     var response = await chatService.HandleAsync(request, cancellationToken).ConfigureAwait(false);
     return Results.Json(response);
+});
+
+app.MapPost("/api/preview", async (PreviewRequestDto request, IMcpClient mcpClient, CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Worksheet))
+    {
+        return Results.Json(new PreviewResponseDto(false, "Worksheet is required.", null, null, 0, Array.Empty<string>(), Array.Empty<PreviewRowDto>(), false, null, null));
+    }
+
+    var arguments = new JsonObject
+    {
+        ["worksheet"] = request.Worksheet
+    };
+
+    if (!string.IsNullOrWhiteSpace(request.Table))
+    {
+        arguments["table"] = request.Table;
+    }
+
+    if (request.Rows is { } rows && rows > 0)
+    {
+        arguments["rows"] = rows;
+    }
+
+    if (!string.IsNullOrWhiteSpace(request.Cursor))
+    {
+        arguments["cursor"] = request.Cursor;
+    }
+
+    try
+    {
+        var result = await mcpClient.CallToolAsync("excel-preview-table", arguments, cancellationToken).ConfigureAwait(false);
+        var textContent = result.Content.FirstOrDefault(static c => string.Equals(c.Type, "text", StringComparison.OrdinalIgnoreCase))?.Text;
+        var jsonContent = result.Content.FirstOrDefault(static c => string.Equals(c.Type, "json", StringComparison.OrdinalIgnoreCase))?.Json as JsonObject;
+
+        if (result.IsError)
+        {
+            var errorText = string.IsNullOrWhiteSpace(textContent) ? "Preview tool reported an error." : textContent;
+            return Results.Json(new PreviewResponseDto(false, errorText, null, null, 0, Array.Empty<string>(), Array.Empty<PreviewRowDto>(), false, null, null));
+        }
+
+        if (jsonContent is null)
+        {
+            var message = string.IsNullOrWhiteSpace(textContent) ? "Preview tool did not return structured data." : textContent;
+            return Results.Json(new PreviewResponseDto(false, message, null, null, 0, Array.Empty<string>(), Array.Empty<PreviewRowDto>(), false, null, null));
+        }
+
+        var payload = jsonContent.Deserialize<PreviewToolPayload>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (payload is null)
+        {
+            return Results.Json(new PreviewResponseDto(false, "Unable to parse preview payload.", null, null, 0, Array.Empty<string>(), Array.Empty<PreviewRowDto>(), false, null, null));
+        }
+
+        var headers = payload.Headers ?? Array.Empty<string>();
+        var rowsPayload = payload.Rows ?? Array.Empty<PreviewToolRowPayload>();
+        var rowsResult = rowsPayload
+            .Select(row => new PreviewRowDto(row.RowNumber, row.Values ?? Array.Empty<string?>()))
+            .ToArray();
+
+        return Results.Json(new PreviewResponseDto(
+            true,
+            null,
+            payload.Worksheet,
+            payload.Table,
+            payload.Offset,
+            headers,
+            rowsResult,
+            payload.HasMore,
+            payload.NextCursor,
+            textContent
+        ));
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new PreviewResponseDto(false, ex.Message, null, null, 0, Array.Empty<string>(), Array.Empty<PreviewRowDto>(), false, null, null));
+    }
+});
+
+app.MapGet("/api/resources", async (IMcpClient mcpClient, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var resources = await mcpClient.ListResourcesAsync(cancellationToken).ConfigureAwait(false);
+        var worksheetNames = resources
+            .Where(static r => string.Equals(r.Uri.Scheme, "excel", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(r.Uri.Host, "worksheet", StringComparison.OrdinalIgnoreCase))
+            .Select(static r => Uri.UnescapeDataString(r.Uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty))
+            .Where(static name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return Results.Json(new { worksheets = worksheetNames });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { worksheets = Array.Empty<string>(), error = ex.Message });
+    }
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));

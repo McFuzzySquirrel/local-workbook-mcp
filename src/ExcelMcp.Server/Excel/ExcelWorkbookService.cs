@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using ClosedXML.Excel;
 using ExcelMcp.Contracts;
@@ -110,6 +111,41 @@ internal sealed class ExcelWorkbookService
         return descriptors;
     }
 
+    public async Task<ExcelPreviewResult> PreviewAsync(ExcelPreviewArguments arguments, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        if (string.IsNullOrWhiteSpace(arguments.Worksheet))
+        {
+            throw new ArgumentException("Worksheet is required.", nameof(arguments));
+        }
+
+        var limit = arguments.Rows is > 0 ? Math.Min(arguments.Rows.Value, 100) : DefaultPreviewRowCount;
+        var offset = CursorToken.TryDecode(arguments.Cursor, out var parsedOffset) && parsedOffset > 0 ? parsedOffset : 0;
+
+        return await Task.Run(() =>
+        {
+            using var workbook = new XLWorkbook(_workbookPath);
+            var worksheet = workbook.Worksheets.FirstOrDefault(ws => WorksheetMatches(ws.Name, arguments.Worksheet));
+            if (worksheet is null)
+            {
+                throw new InvalidOperationException($"Worksheet '{arguments.Worksheet}' not found.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(arguments.Table))
+            {
+                var table = worksheet.Tables.FirstOrDefault(t => TableMatches(t.Name, arguments.Table));
+                if (table is null)
+                {
+                    throw new InvalidOperationException($"Table '{arguments.Table}' not found in worksheet '{worksheet.Name}'.");
+                }
+
+                return BuildTablePreview(worksheet, table, limit, offset, cancellationToken);
+            }
+
+            return BuildWorksheetPreview(worksheet, limit, offset, cancellationToken);
+        }, cancellationToken);
+    }
+
     public async Task<ExcelResourceContent> ReadResourceAsync(Uri uri, CancellationToken cancellationToken, int maxRows = DefaultPreviewRowCount)
     {
         if (maxRows <= 0)
@@ -129,6 +165,8 @@ internal sealed class ExcelWorkbookService
             return new ExcelResourceContent(ExcelResourceUri.WorkbookUri, "application/json", json);
         }
 
+        var limit = Math.Max(1, maxRows);
+
         return await Task.Run(() =>
         {
             using var workbook = new XLWorkbook(_workbookPath);
@@ -146,12 +184,12 @@ internal sealed class ExcelWorkbookService
                     throw new InvalidOperationException($"Table '{tableName}' not found in worksheet '{worksheetName}'.");
                 }
 
-                var csv = BuildTableCsv(table, maxRows);
-                return new ExcelResourceContent(ExcelResourceUri.CreateTableUri(worksheet.Name, table.Name), "text/csv", csv);
+                var preview = BuildTablePreview(worksheet, table, limit, 0, cancellationToken);
+                return new ExcelResourceContent(ExcelResourceUri.CreateTableUri(worksheet.Name, table.Name), "text/csv", preview.Csv);
             }
 
-            var worksheetCsv = BuildWorksheetCsv(worksheet, maxRows);
-            return new ExcelResourceContent(ExcelResourceUri.CreateWorksheetUri(worksheet.Name), "text/csv", worksheetCsv);
+            var worksheetPreview = BuildWorksheetPreview(worksheet, limit, 0, cancellationToken);
+            return new ExcelResourceContent(ExcelResourceUri.CreateWorksheetUri(worksheet.Name), "text/csv", worksheetPreview.Csv);
         }, cancellationToken);
     }
 
@@ -160,58 +198,158 @@ internal sealed class ExcelWorkbookService
         ArgumentNullException.ThrowIfNull(arguments);
         if (string.IsNullOrWhiteSpace(arguments.Query))
         {
-            return new ExcelSearchResult(Array.Empty<ExcelRowResult>(), false);
+            return new ExcelSearchResult(Array.Empty<ExcelRowResult>(), false, null);
         }
 
         var comparison = arguments.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         var limit = arguments.Limit is > 0 ? arguments.Limit.Value : 20;
+        var offset = CursorToken.TryDecode(arguments.Cursor, out var parsedOffset) ? parsedOffset : 0;
 
         return await Task.Run(() =>
         {
             using var workbook = new XLWorkbook(_workbookPath);
             var rows = new List<ExcelRowResult>();
-            var query = arguments.Query;
+            var matchesAfterOffset = 0;
+            var remainingSkip = Math.Max(0, offset);
             var hasMore = false;
 
-            foreach (var worksheet in workbook.Worksheets)
+            foreach (var match in EnumerateMatches(workbook, arguments, comparison, cancellationToken))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (!WorksheetMatches(worksheet.Name, arguments.Worksheet, comparison))
+                if (remainingSkip > 0)
                 {
+                    remainingSkip--;
                     continue;
                 }
 
-                if (worksheet.Tables.Any())
+                matchesAfterOffset++;
+                if (matchesAfterOffset <= limit)
                 {
-                    foreach (var table in worksheet.Tables)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        if (!TableMatches(table.Name, arguments.Table, comparison))
-                        {
-                            continue;
-                        }
-
-                        ScanTable(table, worksheet.Name, query, comparison, limit, rows, ref hasMore, cancellationToken);
-                        if (hasMore)
-                        {
-                            return new ExcelSearchResult(rows, true);
-                        }
-                    }
+                    rows.Add(match);
+                    continue;
                 }
-                else
+
+                hasMore = true;
+                break;
+            }
+
+            var nextCursor = hasMore ? CursorToken.Encode(offset + rows.Count) : null;
+            return new ExcelSearchResult(rows, hasMore, nextCursor);
+        }, cancellationToken);
+    }
+
+    private IEnumerable<ExcelRowResult> EnumerateMatches(XLWorkbook workbook, ExcelSearchArguments arguments, StringComparison comparison, CancellationToken cancellationToken)
+    {
+        foreach (var worksheet in workbook.Worksheets)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!WorksheetMatches(worksheet.Name, arguments.Worksheet, comparison))
+            {
+                continue;
+            }
+
+            if (worksheet.Tables.Any())
+            {
+                foreach (var table in worksheet.Tables)
                 {
-                    ScanWorksheet(worksheet, query, comparison, limit, rows, ref hasMore, cancellationToken);
-                    if (hasMore)
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (!TableMatches(table.Name, arguments.Table, comparison))
                     {
-                        return new ExcelSearchResult(rows, true);
+                        continue;
+                    }
+
+                    foreach (var match in EnumerateTableMatches(table, worksheet.Name, arguments.Query, comparison, cancellationToken))
+                    {
+                        yield return match;
                     }
                 }
             }
+            else
+            {
+                foreach (var match in EnumerateWorksheetMatches(worksheet, arguments.Query, comparison, cancellationToken))
+                {
+                    yield return match;
+                }
+            }
+        }
+    }
 
-            return new ExcelSearchResult(rows, hasMore);
-        }, cancellationToken);
+    private static IEnumerable<ExcelRowResult> EnumerateTableMatches(IXLTable table, string worksheetName, string query, StringComparison comparison, CancellationToken cancellationToken)
+    {
+        var headers = table.Fields.Select(f => f.Name).ToArray();
+
+        foreach (var row in table.DataRange.Rows())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var values = new Dictionary<string, string?>(headers.Length, StringComparer.OrdinalIgnoreCase);
+            var match = false;
+
+            for (var i = 0; i < headers.Length; i++)
+            {
+                var cell = row.Cell(i + 1);
+                var value = FormatCell(cell);
+                values[headers[i]] = value;
+
+                if (!string.IsNullOrEmpty(value) && value.IndexOf(query, comparison) >= 0)
+                {
+                    match = true;
+                }
+            }
+
+            if (!match)
+            {
+                continue;
+            }
+
+            yield return new ExcelRowResult(worksheetName, table.Name, row.RangeAddress.FirstAddress.RowNumber, values);
+        }
+    }
+
+    private static IEnumerable<ExcelRowResult> EnumerateWorksheetMatches(IXLWorksheet worksheet, string query, StringComparison comparison, CancellationToken cancellationToken)
+    {
+        var usedRange = worksheet.RangeUsed();
+        if (usedRange is null)
+        {
+            yield break;
+        }
+
+        var headerRow = usedRange.FirstRowUsed();
+        if (headerRow is null)
+        {
+            yield break;
+        }
+
+        var headers = headerRow.Cells().Select((cell, index) => string.IsNullOrWhiteSpace(cell.GetString()) ? $"Column{index + 1}" : cell.GetString()).ToArray();
+        var dataRows = usedRange.RowsUsed().Where(row => row.RowNumber() > headerRow.RowNumber());
+
+        foreach (var row in dataRows)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var values = new Dictionary<string, string?>(headers.Length, StringComparer.OrdinalIgnoreCase);
+            var match = false;
+
+            for (var i = 0; i < headers.Length; i++)
+            {
+                var cell = row.Cell(i + 1);
+                var value = FormatCell(cell);
+                values[headers[i]] = value;
+
+                if (!string.IsNullOrEmpty(value) && value.IndexOf(query, comparison) >= 0)
+                {
+                    match = true;
+                }
+            }
+
+            if (!match)
+            {
+                continue;
+            }
+
+            yield return new ExcelRowResult(worksheet.Name, null, row.RowNumber(), values);
+        }
     }
 
     private static bool WorksheetMatches(string worksheetName, string? requestedWorksheet, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
@@ -244,94 +382,6 @@ internal sealed class ExcelWorkbookService
         return TableMatches(tableName, requestedTable, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void ScanTable(IXLTable table, string worksheetName, string query, StringComparison comparison, int limit, ICollection<ExcelRowResult> results, ref bool hasMore, CancellationToken cancellationToken)
-    {
-        var headers = table.Fields.Select(f => f.Name).ToArray();
-        var rows = table.DataRange.Rows();
-
-        foreach (var row in rows)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var values = new Dictionary<string, string?>(headers.Length, StringComparer.OrdinalIgnoreCase);
-            var match = false;
-
-            for (var i = 0; i < headers.Length; i++)
-            {
-                var cell = row.Cell(i + 1);
-                var value = FormatCell(cell);
-                values[headers[i]] = value;
-
-                if (!string.IsNullOrEmpty(value) && value.IndexOf(query, comparison) >= 0)
-                {
-                    match = true;
-                }
-            }
-
-            if (!match)
-            {
-                continue;
-            }
-
-            results.Add(new ExcelRowResult(worksheetName, table.Name, row.RangeAddress.FirstAddress.RowNumber, values));
-            if (results.Count >= limit)
-            {
-                hasMore = true;
-                return;
-            }
-        }
-    }
-
-    private static void ScanWorksheet(IXLWorksheet worksheet, string query, StringComparison comparison, int limit, ICollection<ExcelRowResult> results, ref bool hasMore, CancellationToken cancellationToken)
-    {
-        var usedRange = worksheet.RangeUsed();
-        if (usedRange is null)
-        {
-            return;
-        }
-
-        var headerRow = usedRange.FirstRowUsed();
-        if (headerRow is null)
-        {
-            return;
-        }
-
-        var headers = headerRow.Cells().Select((cell, index) => string.IsNullOrWhiteSpace(cell.GetString()) ? $"Column{index + 1}" : cell.GetString()).ToArray();
-        var dataRows = usedRange.RowsUsed().Where(row => row.RowNumber() > headerRow.RowNumber());
-
-        foreach (var row in dataRows)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var values = new Dictionary<string, string?>(headers.Length, StringComparer.OrdinalIgnoreCase);
-            var match = false;
-
-            for (var i = 0; i < headers.Length; i++)
-            {
-                var cell = row.Cell(i + 1);
-                var value = FormatCell(cell);
-                values[headers[i]] = value;
-
-                if (!string.IsNullOrEmpty(value) && value.IndexOf(query, comparison) >= 0)
-                {
-                    match = true;
-                }
-            }
-
-            if (!match)
-            {
-                continue;
-            }
-
-            results.Add(new ExcelRowResult(worksheet.Name, null, row.RowNumber(), values));
-            if (results.Count >= limit)
-            {
-                hasMore = true;
-                return;
-            }
-        }
-    }
-
     private static string[] GetWorksheetHeaders(IXLWorksheet worksheet)
     {
         var range = worksheet.RangeUsed();
@@ -355,34 +405,131 @@ internal sealed class ExcelWorkbookService
         return headers.ToArray();
     }
 
-    private static string BuildTableCsv(IXLTable table, int maxRows)
-    {
-        var headers = table.Fields.Select(f => f.Name).ToArray();
-        var builder = new StringBuilder();
-        WriteCsvRow(builder, headers);
-
-        foreach (var row in table.DataRange.Rows().Take(maxRows))
-        {
-            var values = headers.Select((_, index) => FormatCell(row.Cell(index + 1))).ToArray();
-            WriteCsvRow(builder, values);
-        }
-
-        return builder.ToString();
-    }
-
-    private static string BuildWorksheetCsv(IXLWorksheet worksheet, int maxRows)
+    private ExcelPreviewResult BuildWorksheetPreview(IXLWorksheet worksheet, int limit, int offset, CancellationToken cancellationToken)
     {
         var range = worksheet.RangeUsed();
         if (range is null)
+        {
+            return new ExcelPreviewResult(worksheet.Name, null, Array.Empty<string>(), Array.Empty<ExcelPreviewRow>(), offset, false, null, string.Empty);
+        }
+
+        var headerRow = range.FirstRowUsed();
+        if (headerRow is null)
+        {
+            return new ExcelPreviewResult(worksheet.Name, null, Array.Empty<string>(), Array.Empty<ExcelPreviewRow>(), offset, false, null, string.Empty);
+        }
+
+        var headers = headerRow.Cells()
+            .Select((cell, index) =>
+            {
+                var header = cell.GetString();
+                return string.IsNullOrWhiteSpace(header) ? $"Column{index + 1}" : header;
+            })
+            .ToArray();
+
+        if (headers.Length == 0)
+        {
+            return new ExcelPreviewResult(worksheet.Name, null, Array.Empty<string>(), Array.Empty<ExcelPreviewRow>(), offset, false, null, string.Empty);
+        }
+
+        var rows = new List<ExcelPreviewRow>();
+        var hasMore = false;
+        var skipped = 0;
+
+        foreach (var row in range.RowsUsed())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (row.RowNumber() <= headerRow.RowNumber())
+            {
+                continue;
+            }
+
+            if (skipped < offset)
+            {
+                skipped++;
+                continue;
+            }
+
+            if (rows.Count >= limit)
+            {
+                hasMore = true;
+                break;
+            }
+
+            var values = new string?[headers.Length];
+            for (var i = 0; i < headers.Length; i++)
+            {
+                values[i] = FormatCell(row.Cell(i + 1));
+            }
+
+            rows.Add(new ExcelPreviewRow(row.RowNumber(), values));
+        }
+
+        var nextCursor = hasMore ? CursorToken.Encode(offset + rows.Count) : null;
+        var csv = BuildCsv(headers, rows);
+        return new ExcelPreviewResult(worksheet.Name, null, headers, rows, offset, hasMore, nextCursor, csv);
+    }
+
+    private ExcelPreviewResult BuildTablePreview(IXLWorksheet worksheet, IXLTable table, int limit, int offset, CancellationToken cancellationToken)
+    {
+        var headers = table.Fields.Select(f => f.Name).ToArray();
+        if (headers.Length == 0)
+        {
+            return new ExcelPreviewResult(worksheet.Name, table.Name, Array.Empty<string>(), Array.Empty<ExcelPreviewRow>(), offset, false, null, string.Empty);
+        }
+
+        var rows = new List<ExcelPreviewRow>();
+        var hasMore = false;
+        var skipped = 0;
+
+        foreach (var row in table.DataRange.Rows())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (skipped < offset)
+            {
+                skipped++;
+                continue;
+            }
+
+            if (rows.Count >= limit)
+            {
+                hasMore = true;
+                break;
+            }
+
+            var values = new string?[headers.Length];
+            for (var i = 0; i < headers.Length; i++)
+            {
+                values[i] = FormatCell(row.Cell(i + 1));
+            }
+
+            rows.Add(new ExcelPreviewRow(row.RangeAddress.FirstAddress.RowNumber, values));
+        }
+
+        var nextCursor = hasMore ? CursorToken.Encode(offset + rows.Count) : null;
+        var csv = BuildCsv(headers, rows);
+        return new ExcelPreviewResult(worksheet.Name, table.Name, headers, rows, offset, hasMore, nextCursor, csv);
+    }
+
+    private static string BuildCsv(IReadOnlyList<string> headers, IReadOnlyList<ExcelPreviewRow> rows)
+    {
+        if (headers.Count == 0 && rows.Count == 0)
         {
             return string.Empty;
         }
 
         var builder = new StringBuilder();
-        foreach (var row in range.Rows().Take(maxRows))
+
+        if (headers.Count > 0)
         {
-            var values = row.Cells().Select(FormatCell).ToArray();
-            WriteCsvRow(builder, values);
+            WriteCsvRow(builder, headers.Select(static header => (string?)header).ToArray());
+        }
+
+        foreach (var row in rows)
+        {
+            WriteCsvRow(builder, row.Values);
         }
 
         return builder.ToString();
@@ -418,5 +565,36 @@ internal sealed class ExcelWorkbookService
     private static string FormatCell(IXLCell cell)
     {
         return cell.GetFormattedString();
+    }
+
+    private static class CursorToken
+    {
+        public static bool TryDecode(string? cursor, out int offset)
+        {
+            if (string.IsNullOrWhiteSpace(cursor))
+            {
+                offset = 0;
+                return false;
+            }
+
+            if (int.TryParse(cursor, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed >= 0)
+            {
+                offset = parsed;
+                return true;
+            }
+
+            offset = 0;
+            return false;
+        }
+
+        public static string Encode(int offset)
+        {
+            if (offset < 0)
+            {
+                offset = 0;
+            }
+
+            return offset.ToString(CultureInfo.InvariantCulture);
+        }
     }
 }

@@ -137,6 +137,11 @@ static async Task HandleSearchAsync(McpProcessClient client, Queue<string> argsQ
 		payload["limit"] = limit;
 	}
 
+	if (options.TryGetValue("--cursor", out var cursorToken) && !string.IsNullOrWhiteSpace(cursorToken))
+	{
+		payload["cursor"] = cursorToken;
+	}
+
 	if (options.ContainsKey("--case-sensitive"))
 	{
 		payload["caseSensitive"] = true;
@@ -180,13 +185,44 @@ static async Task HandlePreviewAsync(McpProcessClient client, Queue<string> args
 		payload["rows"] = rows;
 	}
 
+	if (options.TryGetValue("--cursor", out var cursorToken) && !string.IsNullOrWhiteSpace(cursorToken))
+	{
+		payload["cursor"] = cursorToken;
+	}
+
 	var result = await client.CallToolAsync("excel-preview-table", payload, cancellationToken);
+	string? nextCursor = null;
+	var serializerOptions = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
 	foreach (var content in result.Content)
 	{
-		if (string.Equals(content.Type, "text", StringComparison.OrdinalIgnoreCase) && content.Text is not null)
+		if (string.Equals(content.Type, "json", StringComparison.OrdinalIgnoreCase) && content.Json is not null)
+		{
+			Console.WriteLine(content.Json.ToJsonString(serializerOptions));
+			if (content.Json is JsonObject obj)
+			{
+				var hasMore = obj.TryGetPropertyValue("hasMore", out var hasMoreNode) && hasMoreNode is JsonValue hasMoreValue && hasMoreValue.TryGetValue<bool>(out var moreFlag) && moreFlag;
+				var cursorNode = obj.TryGetPropertyValue("nextCursor", out var candidate) ? candidate : null;
+				var cursorValue = cursorNode switch
+				{
+					JsonValue value when value.TryGetValue<string?>(out var token) => token,
+					_ => null
+				};
+
+				if (hasMore && !string.IsNullOrWhiteSpace(cursorValue))
+				{
+					nextCursor = cursorValue;
+				}
+			}
+		}
+		else if (string.Equals(content.Type, "text", StringComparison.OrdinalIgnoreCase) && content.Text is not null)
 		{
 			Console.WriteLine(content.Text);
 		}
+	}
+
+	if (!string.IsNullOrWhiteSpace(nextCursor))
+	{
+		Console.Error.WriteLine($"Next cursor: {nextCursor}. Re-run with --cursor {nextCursor} to continue.");
 	}
 }
 
@@ -298,8 +334,8 @@ static void PrintUsage()
 	Console.WriteLine();
 	Console.WriteLine("Commands:");
 	Console.WriteLine("  list                         Summarize workbook structure using the MCP server.");
-	Console.WriteLine("  search --query <text>        Search workbook content (options: --worksheet, --table, --limit, --case-sensitive).");
-	Console.WriteLine("  preview --worksheet <name>   Preview worksheet or table as CSV (options: --table, --rows).");
+	Console.WriteLine("  search --query <text>        Search workbook content (options: --worksheet, --table, --limit, --cursor, --case-sensitive).");
+	Console.WriteLine("  preview --worksheet <name>   Preview worksheet or table (options: --table, --rows, --cursor).");
 	Console.WriteLine("  resources                    List exposed MCP resources.");
 }
 

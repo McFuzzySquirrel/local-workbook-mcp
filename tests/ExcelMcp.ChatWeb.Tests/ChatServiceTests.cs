@@ -63,7 +63,8 @@ public sealed class ChatServiceTests
     public async Task HandleAsync_ReturnsPlainTextWhenModelProducesNonJson()
     {
         var llm = new FakeLlmStudioClient([
-            "Here is what I found in your workbook."
+            "Here is what I found in your workbook.",
+            "{\"type\":\"final_response\",\"message\":\"Here is what I found in your workbook.\"}"
         ]);
 
         var toolDefinition = new McpToolDefinition("excel-search", "Search workbook", new JsonObject());
@@ -78,8 +79,12 @@ public sealed class ChatServiceTests
         var response = await service.HandleAsync(request, CancellationToken.None);
 
         Assert.Equal("Here is what I found in your workbook.", response.Reply);
-        Assert.Empty(response.ToolCalls);
-        Assert.Empty(mcp.Invocations);
+    Assert.Empty(response.ToolCalls);
+    Assert.Empty(mcp.Invocations);
+    Assert.True(llm.Conversations.Count >= 2, "Expected reminder follow-up turn.");
+    var reminder = llm.Conversations[1].Last();
+    Assert.Equal("user", reminder.Role);
+    Assert.Contains("Reminder: respond strictly", reminder.Content);
     }
 
     [Fact]
@@ -161,6 +166,7 @@ public sealed class ChatServiceTests
         public List<(string Name, JsonNode? Arguments)> Invocations { get; } = new();
 
         public Func<string, JsonNode?, Task<McpToolCallResult>> ToolResultFactory { get; set; } = (_, _) => Task.FromResult(new McpToolCallResult(Array.Empty<McpToolContent>(), false));
+        public IReadOnlyList<McpResource> Resources { get; set; } = Array.Empty<McpResource>();
 
         public Task<IReadOnlyList<McpToolDefinition>> ListToolsAsync(CancellationToken cancellationToken)
         {
@@ -171,6 +177,11 @@ public sealed class ChatServiceTests
         {
             Invocations.Add((name, arguments));
             return await ToolResultFactory(name, arguments).ConfigureAwait(false);
+        }
+
+        public Task<IReadOnlyList<McpResource>> ListResourcesAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Resources);
         }
     }
 }

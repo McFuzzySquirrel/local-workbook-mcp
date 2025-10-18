@@ -95,8 +95,195 @@ body {
     flex-direction: column;
     gap: 1.5rem;
     padding: 1.75rem 2.5rem;
-    max-height: min(60vh, 640px);
+    max-height: min(55vh, 560px);
     overflow-y: auto;
+}
+
+.tools-panel {
+    border-top: 1px solid rgba(71, 85, 105, 0.35);
+    padding: 1.5rem 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    background: rgba(15, 23, 42, 0.55);
+    transition: max-height 0.2s ease;
+}
+
+.tools-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.tools-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.tools-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.tools-header p {
+    margin: 0;
+    color: rgba(148, 163, 184, 0.85);
+    font-size: 0.85rem;
+}
+
+.tool-toggle {
+    align-self: center;
+    background: rgba(56, 189, 248, 0.15);
+    color: rgba(226, 232, 240, 0.9);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.tool-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px -12px rgba(14, 165, 233, 0.8);
+}
+
+.tools-body {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.tools-panel.collapsed .tools-body {
+    display: none;
+}
+
+.tools-panel.collapsed .tool-toggle {
+    background: rgba(71, 85, 105, 0.3);
+}
+
+.tools-panel.collapsed {
+    padding-bottom: 1.25rem;
+}
+
+.tool-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+.tool-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    color: rgba(148, 163, 184, 0.85);
+}
+
+.tool-field input {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(15, 23, 42, 0.65);
+    color: rgba(226, 232, 240, 0.95);
+    padding: 0.6rem 0.75rem;
+}
+
+.tool-field input:focus {
+    outline: none;
+    border-color: rgba(56, 189, 248, 0.6);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+}
+
+.tool-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.tool-button {
+    background: linear-gradient(135deg, #10b981, #0ea5e9);
+    color: #0f172a;
+    border: none;
+    padding: 0.6rem 1.25rem;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.tool-button.secondary {
+    background: rgba(56, 189, 248, 0.12);
+    color: rgba(226, 232, 240, 0.9);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.tool-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.tool-button:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px -15px rgba(14, 165, 233, 0.9);
+}
+
+.tool-status {
+    min-height: 1.1rem;
+    font-size: 0.8rem;
+    color: rgba(148, 163, 184, 0.85);
+}
+
+.tool-status.error {
+    color: #fca5a5;
+}
+
+.preview-output {
+    border-radius: 1rem;
+    border: 1px solid rgba(71, 85, 105, 0.35);
+    background: rgba(15, 23, 42, 0.6);
+    padding: 1rem;
+    overflow-x: auto;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.preview-output table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.preview-output thead {
+    position: sticky;
+    top: 0;
+    background: rgba(15, 23, 42, 0.95);
+}
+
+.preview-output th,
+.preview-output td {
+    border: 1px solid rgba(71, 85, 105, 0.4);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+
+.preview-output th {
+    font-weight: 600;
+    color: rgba(226, 232, 240, 0.9);
+}
+
+.preview-output td {
+    color: rgba(226, 232, 240, 0.85);
+    white-space: nowrap;
 }
 
 .chat-bubble {

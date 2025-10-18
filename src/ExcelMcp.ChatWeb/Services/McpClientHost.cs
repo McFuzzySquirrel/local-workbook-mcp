@@ -75,6 +75,11 @@ public sealed class McpClientHost : IHostedService, IAsyncDisposable, IMcpClient
         return await GetClient().CallToolAsync(name, arguments, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<McpResource>> ListResourcesAsync(CancellationToken cancellationToken)
+    {
+        return await GetClient().ListResourcesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     private McpProcessClient GetClient()
     {
         if (_client is null)

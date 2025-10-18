@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 using System.Text.Json;
@@ -259,14 +260,6 @@ internal sealed class McpServer
             : arguments.Deserialize<ExcelSearchArguments>(JsonOptions.Serializer) ?? new ExcelSearchArguments(string.Empty);
 
         var result = await _workbookService.SearchAsync(args, cancellationToken).ConfigureAwait(false);
-        if (result.Rows.Count == 0)
-        {
-            return new McpToolCallResult(new[]
-            {
-                new McpToolContent("text", Text: "No matching rows found.")
-            });
-        }
-
         var json = new JsonObject
         {
             ["query"] = args.Query,
@@ -274,6 +267,7 @@ internal sealed class McpServer
             ["table"] = args.Table,
             ["limit"] = args.Limit,
             ["hasMore"] = result.HasMore,
+            ["nextCursor"] = result.NextCursor is null ? JsonValue.Create<string?>(null) : JsonValue.Create(result.NextCursor),
             ["rows"] = new JsonArray(result.Rows.Select(row =>
             {
                 var rowJson = new JsonObject
@@ -301,29 +295,62 @@ internal sealed class McpServer
     {
         if (arguments is null)
         {
-            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "Worksheet and table arguments are required.") }, true);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "Worksheet, optional table, and pagination arguments are required.") }, true);
         }
 
-        var worksheetName = arguments["worksheet"]?.GetValue<string?>();
-        var tableName = arguments["table"]?.GetValue<string?>();
-        var rowCount = arguments["rows"]?.GetValue<int?>() ?? 10;
+        ExcelPreviewArguments previewArgs;
+        try
+        {
+            previewArgs = arguments.Deserialize<ExcelPreviewArguments>(JsonOptions.Serializer) ?? new ExcelPreviewArguments(string.Empty);
+        }
+        catch (Exception ex)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: $"Invalid preview arguments: {ex.Message}") }, true);
+        }
 
-        if (string.IsNullOrWhiteSpace(worksheetName))
+        if (string.IsNullOrWhiteSpace(previewArgs.Worksheet))
         {
             return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'worksheet' argument is required.") }, true);
         }
 
-        var uri = tableName is null
-            ? ExcelResourceUri.CreateWorksheetUri(worksheetName)
-            : ExcelResourceUri.CreateTableUri(worksheetName, tableName);
-
         try
         {
-            var content = await _workbookService.ReadResourceAsync(uri, cancellationToken, Math.Max(rowCount, 1)).ConfigureAwait(false);
-            return new McpToolCallResult(new[]
+            var preview = await _workbookService.PreviewAsync(previewArgs, cancellationToken).ConfigureAwait(false);
+
+            var headersArray = new JsonArray(preview.Headers.Select(static header => JsonValue.Create(header)!).ToArray());
+            var rowsArray = new JsonArray(preview.Rows.Select(row =>
             {
-                new McpToolContent("text", Text: content.Text ?? string.Empty)
-            });
+                var valuesArray = new JsonArray(row.Values.Select(static value => JsonValue.Create(value)!).ToArray());
+                return new JsonObject
+                {
+                    ["rowNumber"] = row.RowNumber,
+                    ["values"] = valuesArray
+                };
+            }).ToArray());
+
+            var payload = new JsonObject
+            {
+                ["worksheet"] = preview.Worksheet,
+                ["table"] = preview.Table is null ? JsonValue.Create<string?>(null) : JsonValue.Create(preview.Table)!,
+                ["offset"] = preview.Offset,
+                ["rowCount"] = preview.Rows.Count,
+                ["hasMore"] = preview.HasMore,
+                ["nextCursor"] = preview.NextCursor is null ? JsonValue.Create<string?>(null) : JsonValue.Create(preview.NextCursor)!,
+                ["headers"] = headersArray,
+                ["rows"] = rowsArray
+            };
+
+            var contents = new List<McpToolContent>
+            {
+                new("json", Json: payload)
+            };
+
+            if (!string.IsNullOrEmpty(preview.Csv))
+            {
+                contents.Add(new McpToolContent("text", Text: preview.Csv));
+            }
+
+            return new McpToolCallResult(contents);
         }
         catch (Exception ex)
         {
@@ -337,7 +364,7 @@ internal sealed class McpServer
         {
             "excel-list-structure" => "Summarize worksheets, tables, and columns available in the workbook.",
             "excel-search" => "Search the workbook for rows containing a text query across worksheets or tables.",
-            "excel-preview-table" => "Return a CSV preview of a worksheet or table.",
+            "excel-preview-table" => "Return a CSV preview of a worksheet or table with pagination support.",
             _ => "Excel tool"
         };
         }
@@ -355,7 +382,8 @@ internal sealed class McpServer
                                 "worksheet": {"type": "string", "description": "Optional worksheet name filter."},
                                 "table": {"type": "string", "description": "Optional Excel table name filter."},
                                 "limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of matching rows."},
-                                "caseSensitive": {"type": "boolean", "description": "Whether to match using case-sensitive comparison."}
+                                "caseSensitive": {"type": "boolean", "description": "Whether to match using case-sensitive comparison."},
+                                "cursor": {"type": "string", "description": "Cursor token returned from a previous search page."}
                             },
                             "required": ["query"]
                         }
@@ -366,7 +394,8 @@ internal sealed class McpServer
                             "properties": {
                                 "worksheet": {"type": "string", "description": "Worksheet to preview."},
                                 "table": {"type": "string", "description": "Optional table within the worksheet."},
-                                "rows": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of rows to include."}
+                                "rows": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of rows per page."},
+                                "cursor": {"type": "string", "description": "Cursor token returned from a previous preview page."}
                             },
                             "required": ["worksheet"]
                         }

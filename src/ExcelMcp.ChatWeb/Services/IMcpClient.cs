@@ -8,4 +8,6 @@ public interface IMcpClient
     Task<IReadOnlyList<McpToolDefinition>> ListToolsAsync(CancellationToken cancellationToken);
 
     Task<McpToolCallResult> CallToolAsync(string name, JsonNode? arguments, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<McpResource>> ListResourcesAsync(CancellationToken cancellationToken);
 }
