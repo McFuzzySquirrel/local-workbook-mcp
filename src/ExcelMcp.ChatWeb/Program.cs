@@ -33,6 +33,12 @@ builder.Services.AddHttpClient<ILlmStudioClient, LlmStudioClient>((serviceProvid
 
 builder.Services.AddSingleton<ChatService>();
 
+builder.Services.AddSingleton(static sp =>
+{
+    var options = sp.GetRequiredService<IOptions<LlmStudioOptions>>().Value;
+    return new ModelInfoDto(options.Model, options.BaseUrl);
+});
+
 var app = builder.Build();
 
 app.UseDefaultFiles();
@@ -45,6 +51,8 @@ app.MapPost("/api/chat", async (ChatRequestDto request, ChatService chatService,
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+app.MapGet("/api/model", (ModelInfoDto info) => Results.Json(info));
 
 app.MapFallbackToFile("/index.html");
 

@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -35,7 +36,21 @@ public sealed class ChatService
 
         while (true)
         {
-            var response = await _llmClient.SendChatAsync(conversation, cancellationToken).ConfigureAwait(false);
+            LlmStudioChatResponse response;
+            try
+            {
+                response = await _llmClient.SendChatAsync(conversation, cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException ex)
+            {
+                var message = $"LLM request failed: {ex.Message}";
+                return new ChatResponseDto(message, toolCalls);
+            }
+            catch (Exception ex)
+            {
+                var message = $"Unexpected error contacting language model: {ex.Message}";
+                return new ChatResponseDto(message, toolCalls);
+            }
             var rawContent = response.Content.Trim();
             conversation.Add(LlmStudioChatMessage.Assistant(rawContent));
 

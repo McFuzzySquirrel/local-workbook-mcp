@@ -21,7 +21,14 @@ public sealed class LlmStudioClient : ILlmStudioClient
     {
         var request = new LlmStudioChatRequest(_options.Model, messages, _options.Temperature);
         using var response = await _httpClient.PostAsJsonAsync("/v1/chat/completions", request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var message = string.IsNullOrWhiteSpace(detail)
+                ? $"LM Studio responded {(int)response.StatusCode} ({response.ReasonPhrase})."
+                : $"LM Studio responded {(int)response.StatusCode} ({response.ReasonPhrase}): {detail}";
+            throw new HttpRequestException(message);
+        }
         var payload = await response.Content.ReadFromJsonAsync<LlmStudioChatResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
         return payload ?? throw new InvalidOperationException("LLM Studio response payload was empty.");
     }
