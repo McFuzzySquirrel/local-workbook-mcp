@@ -63,7 +63,32 @@ dotnet run --project src/ExcelMcp.Client -- list
 dotnet run --project src/ExcelMcp.ChatWeb
 ```
 
-## Self-Contained Bundles
+## Example mcp,json for VS Code
+
+```
+{
+  "servers": {
+    "excel-workbook-mcp": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server.exe",
+      "args": [
+        "--workbook",
+        "${input:excel-workbook-path}"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "id": "excel-workbook-path",
+      "type": "promptString",
+      "description": "Full path to the Excel workbook to load",
+      "default": "D:/Downloads/sampledata.xlsx"
+    }
+  ]
+}
+```
+
+## Sample Client
 
 Each app has a dedicated packaging script that publishes single-file executables, copies launch helpers, and writes a README into `dist/<rid>/<AppName>`:
 
