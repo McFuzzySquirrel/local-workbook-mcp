@@ -1,12 +1,33 @@
+using ExcelMcp.ChatWeb.Logging;
 using ExcelMcp.ChatWeb.Models;
 using ExcelMcp.ChatWeb.Options;
 using ExcelMcp.ChatWeb.Services;
+using ExcelMcp.ChatWeb.Services.Agent;
+// using ExcelMcp.ChatWeb.Services.Plugins; // Will be added when plugins are created
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.SemanticKernel;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+// Configure Serilog from appsettings.json
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json")
+        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+        .Build())
+    .CreateLogger();
+
+try
+{
+    Log.Information("Starting ExcelMcp.ChatWeb application");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Use Serilog for logging
+    builder.Host.UseSerilog();
 
 EnsureExcelMcpConfiguration(builder);
 
@@ -19,6 +40,52 @@ builder.Services.AddOptions<ExcelMcpOptions>()
     .Bind(builder.Configuration.GetSection(ExcelMcpOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
+
+builder.Services.AddOptions<SemanticKernelOptions>()
+    .Bind(builder.Configuration.GetSection("SemanticKernel"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<ConversationOptions>()
+    .Bind(builder.Configuration.GetSection("Conversation"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// Semantic Kernel with OpenAI chat completion
+builder.Services.AddSingleton(serviceProvider =>
+{
+    var skOptions = serviceProvider.GetRequiredService<IOptions<SemanticKernelOptions>>().Value;
+    
+    var kernelBuilder = Kernel.CreateBuilder();
+    
+    // Add OpenAI chat completion for local LLM (LM Studio, Ollama, etc.)
+    kernelBuilder.AddOpenAIChatCompletion(
+        modelId: skOptions.Model,
+        apiKey: skOptions.ApiKey,
+        endpoint: new Uri(skOptions.BaseUrl));
+    
+    // Plugins will be added here when they're created
+    // kernelBuilder.Plugins.AddFromObject<WorkbookStructurePlugin>();
+    // kernelBuilder.Plugins.AddFromObject<WorkbookSearchPlugin>();
+    // kernelBuilder.Plugins.AddFromObject<DataRetrievalPlugin>();
+    
+    return kernelBuilder.Build();
+});
+
+// Agent services
+builder.Services.AddSingleton<AgentLogger>();
+// TODO: Uncomment when implementations are created
+// builder.Services.AddScoped<IExcelAgentService, ExcelAgentService>();
+// builder.Services.AddScoped<IConversationManager, ConversationManager>();
+// builder.Services.AddSingleton<IResponseFormatter, ResponseFormatter>();
+
+// Plugins (will be created in Phase 3)
+// builder.Services.AddSingleton<WorkbookStructurePlugin>();
+// builder.Services.AddSingleton<WorkbookSearchPlugin>();
+// builder.Services.AddSingleton<DataRetrievalPlugin>();
+
+// Session state (per Blazor circuit)
+builder.Services.AddScoped<WorkbookSession>();
 
 builder.Services.AddSingleton<McpClientHost>();
 builder.Services.AddSingleton<IMcpClient>(static sp => sp.GetRequiredService<McpClientHost>());
@@ -39,24 +106,41 @@ builder.Services.AddSingleton(static sp =>
     return new ModelInfoDto(options.Model, options.BaseUrl);
 });
 
-var app = builder.Build();
+    var app = builder.Build();
 
-app.UseDefaultFiles();
-app.UseStaticFiles();
+    // Add correlation ID middleware for request tracking
+    app.UseCorrelationId();
 
-app.MapPost("/api/chat", async (ChatRequestDto request, ChatService chatService, CancellationToken cancellationToken) =>
+    // Add Serilog request logging
+    app.UseSerilogRequestLogging();
+
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+
+    app.MapPost("/api/chat", async (ChatRequestDto request, ChatService chatService, CancellationToken cancellationToken) =>
+    {
+        var response = await chatService.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+        return Results.Json(response);
+    });
+
+    app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+    app.MapGet("/api/model", (ModelInfoDto info) => Results.Json(info));
+
+    app.MapFallbackToFile("/index.html");
+
+    Log.Information("ExcelMcp.ChatWeb application started successfully");
+    app.Run();
+}
+catch (Exception ex)
 {
-    var response = await chatService.HandleAsync(request, cancellationToken).ConfigureAwait(false);
-    return Results.Json(response);
-});
-
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-
-app.MapGet("/api/model", (ModelInfoDto info) => Results.Json(info));
-
-app.MapFallbackToFile("/index.html");
-
-app.Run();
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 static void EnsureExcelMcpConfiguration(WebApplicationBuilder builder)
 {

@@ -59,8 +59,8 @@
 
 ### Logging Infrastructure
 
-- [ ] T019 Create `src/ExcelMcp.ChatWeb/Logging/AgentLogger.cs` with methods: LogQuery, LogToolInvocation, LogResponse, LogError (with correlationId)
-- [ ] T020 Create `src/ExcelMcp.ChatWeb/Logging/CorrelationIdMiddleware.cs` for HTTP request correlation tracking
+- [X] T019 Create `src/ExcelMcp.ChatWeb/Logging/AgentLogger.cs` with methods: LogQuery, LogToolInvocation, LogResponse, LogError (with correlationId)
+- [X] T020 Create `src/ExcelMcp.ChatWeb/Logging/CorrelationIdMiddleware.cs` for HTTP request correlation tracking
 
 ### Service Interfaces
 
@@ -70,12 +70,12 @@
 
 ### Program.cs Configuration
 
-- [ ] T024 Update `src/ExcelMcp.ChatWeb/Program.cs` to register Semantic Kernel with OpenAI chat completion (using LlmStudioOptions for endpoint)
-- [ ] T025 Update `src/ExcelMcp.ChatWeb/Program.cs` to configure Serilog with JSON Lines file sink
-- [ ] T026 Update `src/ExcelMcp.ChatWeb/Program.cs` to register scoped WorkbookSession service
-- [ ] T027 Update `src/ExcelMcp.ChatWeb/Program.cs` to add CorrelationIdMiddleware to request pipeline
+- [X] T024 Update `src/ExcelMcp.ChatWeb/Program.cs` to register Semantic Kernel with OpenAI chat completion (using LlmStudioOptions for endpoint)
+- [X] T025 Update `src/ExcelMcp.ChatWeb/Program.cs` to configure Serilog with JSON Lines file sink
+- [X] T026 Update `src/ExcelMcp.ChatWeb/Program.cs` to register scoped WorkbookSession service
+- [X] T027 Update `src/ExcelMcp.ChatWeb/Program.cs` to add CorrelationIdMiddleware to request pipeline
 
-**Checkpoint**: Foundation ready - all models, interfaces, and core infrastructure complete. User story implementation can now begin in parallel
+**Checkpoint**: ✅ Foundation ready - all models, interfaces, and core infrastructure complete. User story implementation can now begin in parallel
 
 ---
 
