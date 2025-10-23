@@ -245,15 +245,18 @@ Do NOT describe the data or reformat it as markdown. Present the actual data in 
             var responseContent = result.Content ?? "No response generated.";
             var duration = DateTimeOffset.UtcNow - startTime;
 
+            // Detect and format table data
+            var (formattedContent, contentType) = FormatResponseContent(responseContent);
+
             // Add assistant response to conversation
-            _conversationManager.AddAssistantTurn(responseContent, correlationId, ContentType.Text);
+            _conversationManager.AddAssistantTurn(formattedContent, correlationId, contentType);
 
             // Build agent response
             var response = new AgentResponse
             {
                 CorrelationId = correlationId,
-                Content = responseContent,
-                ContentType = ContentType.Text,
+                Content = formattedContent,
+                ContentType = contentType,
                 ProcessingTimeMs = (int)duration.TotalMilliseconds,
                 ModelUsed = _skOptions.Model
             };
@@ -376,6 +379,86 @@ Do NOT describe the data or reformat it as markdown. Present the actual data in 
         }
 
         return Task.FromResult(suggestions.Take(maxSuggestions).ToList());
+    }
+
+    /// <summary>
+    /// Detects CSV data in the response and converts it to HTML table format.
+    /// Returns formatted content and appropriate content type.
+    /// </summary>
+    private (string content, ContentType type) FormatResponseContent(string responseContent)
+    {
+        // Check if response contains CSV data (heuristic: has commas and line breaks)
+        if (TryParseCsvToTable(responseContent, out var tableData))
+        {
+            var htmlTable = _responseFormatter.FormatAsHtmlTable(tableData);
+            return (htmlTable, ContentType.Table);
+        }
+
+        // No table detected, return as formatted text
+        var formattedText = _responseFormatter.FormatAsText(responseContent);
+        return (formattedText, ContentType.Text);
+    }
+
+    /// <summary>
+    /// Attempts to parse CSV data from response content into TableData model.
+    /// </summary>
+    private static bool TryParseCsvToTable(string content, out TableData tableData)
+    {
+        tableData = new TableData { Columns = new List<string>(), Rows = new List<List<string>>() };
+
+        // Look for CSV patterns: multiple lines with consistent comma delimiters
+        var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        
+        if (lines.Length < 2)
+        {
+            return false; // Need at least header + 1 data row
+        }
+
+        // Parse first line as headers
+        var headers = lines[0].Split(',').Select(h => h.Trim()).ToList();
+        
+        if (headers.Count < 2)
+        {
+            return false; // Need at least 2 columns to be a table
+        }
+
+        // Verify subsequent lines have same number of columns
+        var rows = new List<List<string>>();
+        for (int i = 1; i < lines.Length; i++)
+        {
+            var cells = lines[i].Split(',').Select(c => c.Trim()).ToList();
+            
+            // Allow some flexibility (within 1 column difference)
+            if (Math.Abs(cells.Count - headers.Count) > 1)
+            {
+                return false; // Not consistent column structure
+            }
+
+            // Pad if needed
+            while (cells.Count < headers.Count)
+            {
+                cells.Add(string.Empty);
+            }
+
+            // Truncate if too many
+            if (cells.Count > headers.Count)
+            {
+                cells = cells.Take(headers.Count).ToList();
+            }
+
+            rows.Add(cells);
+        }
+
+        // Success - we have table data
+        tableData.Columns = headers;
+        tableData.Rows = rows;
+        tableData.Metadata = new Models.TableMetadata
+        {
+            RowCount = rows.Count,
+            IsTruncated = false
+        };
+
+        return true;
     }
 
     /// <summary>
