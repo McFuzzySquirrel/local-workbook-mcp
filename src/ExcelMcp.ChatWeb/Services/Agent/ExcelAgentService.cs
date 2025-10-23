@@ -6,6 +6,7 @@ using ExcelMcp.Contracts;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace ExcelMcp.ChatWeb.Services.Agent;
 
@@ -214,10 +215,20 @@ public class ExcelAgentService : IExcelAgentService
             
             chatHistory.AddSystemMessage(systemContext);
 
-            // Invoke Semantic Kernel with plugins
+            // Invoke Semantic Kernel with automatic function calling enabled
             var chatService = _kernel.GetRequiredService<IChatCompletionService>();
+            
+            // Configure execution settings to enable automatic function calling
+            var executionSettings = new OpenAIPromptExecutionSettings
+            {
+                ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+                Temperature = 0.7,
+                MaxTokens = 2048
+            };
+
             var result = await chatService.GetChatMessageContentAsync(
                 chatHistory,
+                executionSettings: executionSettings,
                 kernel: _kernel,
                 cancellationToken: timeoutCts.Token);
 
