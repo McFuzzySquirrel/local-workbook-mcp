@@ -151,30 +151,16 @@ finally
 
 static void EnsureExcelMcpConfiguration(WebApplicationBuilder builder)
 {
-    var workbookConfigKey = $"{ExcelMcpOptions.SectionName}:WorkbookPath";
     var serverConfigKey = $"{ExcelMcpOptions.SectionName}:ServerPath";
-
-    var workbookPath = builder.Configuration[workbookConfigKey];
     var serverPath = builder.Configuration[serverConfigKey];
-
-    if (string.IsNullOrWhiteSpace(workbookPath))
-    {
-        workbookPath = Environment.GetEnvironmentVariable("EXCEL_MCP_WORKBOOK");
-    }
 
     if (string.IsNullOrWhiteSpace(serverPath))
     {
         serverPath = Environment.GetEnvironmentVariable("EXCEL_MCP_SERVER");
     }
 
+    // Only prompt for server path if not configured (workbook is selected via UI now)
     var interactive = !Console.IsInputRedirected && !Console.IsOutputRedirected && !Console.IsErrorRedirected;
-    var overrides = new Dictionary<string, string?>();
-
-    if (string.IsNullOrWhiteSpace(workbookPath) && interactive)
-    {
-        Console.Write("Enter the full path to the Excel workbook: ");
-        workbookPath = Console.ReadLine()?.Trim();
-    }
 
     if (string.IsNullOrWhiteSpace(serverPath) && interactive)
     {
@@ -193,22 +179,14 @@ static void EnsureExcelMcpConfiguration(WebApplicationBuilder builder)
         }
     }
 
-    if (!string.IsNullOrWhiteSpace(workbookPath))
-    {
-        var resolved = Path.GetFullPath(workbookPath);
-        overrides[workbookConfigKey] = resolved;
-        Environment.SetEnvironmentVariable("EXCEL_MCP_WORKBOOK", resolved);
-    }
-
     if (!string.IsNullOrWhiteSpace(serverPath))
     {
         var resolved = Path.GetFullPath(serverPath);
-        overrides[serverConfigKey] = resolved;
+        var overrides = new Dictionary<string, string?>
+        {
+            [serverConfigKey] = resolved
+        };
         Environment.SetEnvironmentVariable("EXCEL_MCP_SERVER", resolved);
-    }
-
-    if (overrides.Count > 0)
-    {
         builder.Configuration.AddInMemoryCollection(overrides);
     }
 }
