@@ -20,38 +20,38 @@ public class DataRetrievalPlugin
     }
 
     /// <summary>
-    /// Previews rows from a table or sheet with pagination support.
+    /// Previews rows from a worksheet or table.
     /// </summary>
     [KernelFunction("preview_table")]
-    [Description("Previews rows from a table or sheet with pagination support")]
+    [Description("Return a CSV preview of rows from a worksheet or optional table within it")]
     public async Task<string> PreviewTable(
-        [Description("Table name or sheet name")] string name,
-        [Description("Number of rows to retrieve (default: 10, max: 1000)")] int rowCount = 10,
-        [Description("Starting row number (1-based, default: 1)")] int startRow = 1)
+        [Description("Worksheet name to preview")] string worksheet,
+        [Description("Optional table name within the worksheet")] string? table = null,
+        [Description("Maximum number of rows to include (1-100, default: 10)")] int rows = 10)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrWhiteSpace(worksheet))
             {
-                return CreateErrorResponse("INVALID_INPUT", "Table or sheet name cannot be empty");
+                return CreateErrorResponse("INVALID_INPUT", "Worksheet name cannot be empty");
             }
 
-            if (rowCount < 1 || rowCount > 1000)
+            if (rows < 1 || rows > 100)
             {
-                return CreateErrorResponse("INVALID_INPUT", "rowCount must be between 1 and 1000");
-            }
-
-            if (startRow < 1)
-            {
-                return CreateErrorResponse("INVALID_INPUT", "startRow must be 1 or greater");
+                return CreateErrorResponse("INVALID_INPUT", "rows must be between 1 and 100");
             }
 
             var arguments = new JsonObject
             {
-                ["name"] = name,
-                ["rowCount"] = rowCount,
-                ["startRow"] = startRow
+                ["worksheet"] = worksheet,
+                ["rows"] = rows
             };
+
+            // Add table parameter if provided
+            if (!string.IsNullOrWhiteSpace(table))
+            {
+                arguments["table"] = table;
+            }
 
             var result = await _mcpClient.CallToolAsync("excel-preview-table", arguments, CancellationToken.None);
             

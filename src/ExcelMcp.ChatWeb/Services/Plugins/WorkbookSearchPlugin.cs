@@ -23,27 +23,29 @@ public class WorkbookSearchPlugin
     /// Searches for text across all sheets in the workbook.
     /// </summary>
     [KernelFunction("search_workbook")]
-    [Description("Searches for text across all sheets in the workbook")]
+    [Description("Search the workbook for rows containing text query across worksheets or tables")]
     public async Task<string> SearchWorkbook(
-        [Description("The text to search for")] string searchText,
-        [Description("Maximum number of results to return (default: 100, max: 500)")] int maxResults = 100)
+        [Description("Text to match within cell values")] string query,
+        [Description("Maximum number of matching rows to return (1-100, default: 100)")] int limit = 100,
+        [Description("Whether to match using case-sensitive comparison (default: false)")] bool caseSensitive = false)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(searchText))
+            if (string.IsNullOrWhiteSpace(query))
             {
-                return CreateErrorResponse("INVALID_INPUT", "Search text cannot be empty");
+                return CreateErrorResponse("INVALID_INPUT", "Search query cannot be empty");
             }
 
-            if (maxResults < 1 || maxResults > 500)
+            if (limit < 1 || limit > 100)
             {
-                return CreateErrorResponse("INVALID_INPUT", "maxResults must be between 1 and 500");
+                return CreateErrorResponse("INVALID_INPUT", "limit must be between 1 and 100");
             }
 
             var arguments = new JsonObject
             {
-                ["searchText"] = searchText,
-                ["maxResults"] = maxResults
+                ["query"] = query,
+                ["limit"] = limit,
+                ["caseSensitive"] = caseSensitive
             };
 
             var result = await _mcpClient.CallToolAsync("excel-search", arguments, CancellationToken.None);
@@ -65,77 +67,50 @@ public class WorkbookSearchPlugin
     /// Searches for text within a specific worksheet.
     /// </summary>
     [KernelFunction("search_in_sheet")]
-    [Description("Searches for text within a specific worksheet")]
+    [Description("Search for text within a specific worksheet")]
     public async Task<string> SearchInSheet(
-        [Description("The worksheet name to search in")] string sheetName,
-        [Description("The text to search for")] string searchText,
-        [Description("Maximum number of results to return (default: 100, max: 500)")] int maxResults = 100)
+        [Description("Worksheet name to search in")] string worksheet,
+        [Description("Text to match within cell values")] string query,
+        [Description("Maximum number of matching rows to return (1-100, default: 100)")] int limit = 100,
+        [Description("Whether to match using case-sensitive comparison (default: false)")] bool caseSensitive = false)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(sheetName))
+            if (string.IsNullOrWhiteSpace(worksheet))
             {
-                return CreateErrorResponse("INVALID_INPUT", "Sheet name cannot be empty");
+                return CreateErrorResponse("INVALID_INPUT", "Worksheet name cannot be empty");
             }
 
-            if (string.IsNullOrWhiteSpace(searchText))
+            if (string.IsNullOrWhiteSpace(query))
             {
-                return CreateErrorResponse("INVALID_INPUT", "Search text cannot be empty");
+                return CreateErrorResponse("INVALID_INPUT", "Search query cannot be empty");
             }
 
-            if (maxResults < 1 || maxResults > 500)
+            if (limit < 1 || limit > 100)
             {
-                return CreateErrorResponse("INVALID_INPUT", "maxResults must be between 1 and 500");
+                return CreateErrorResponse("INVALID_INPUT", "limit must be between 1 and 100");
             }
 
             var arguments = new JsonObject
             {
-                ["searchText"] = searchText,
-                ["maxResults"] = maxResults
+                ["query"] = query,
+                ["worksheet"] = worksheet,
+                ["limit"] = limit,
+                ["caseSensitive"] = caseSensitive
             };
 
             var result = await _mcpClient.CallToolAsync("excel-search", arguments, CancellationToken.None);
             
             if (!result.IsError && result.Content != null)
             {
-                // Filter results to only include the specified sheet
-                var contentString = result.Content.ToString();
-                if (string.IsNullOrEmpty(contentString))
-                {
-                    return CreateErrorResponse("MCP_ERROR", "Empty response from MCP server");
-                }
-                
-                var searchResults = JsonSerializer.Deserialize<JsonObject>(contentString);
-                if (searchResults != null && searchResults.TryGetPropertyValue("results", out var resultsNode))
-                {
-                    var results = resultsNode?.AsArray();
-                    if (results != null)
-                    {
-                        var filteredResults = results
-                            .Where(r => r?["sheet"]?.ToString().Equals(sheetName, StringComparison.OrdinalIgnoreCase) == true)
-                            .Take(maxResults)
-                            .ToList();
-
-                        var filtered = new
-                        {
-                            sheetName = sheetName,
-                            searchText = searchText,
-                            resultCount = filteredResults.Count,
-                            results = filteredResults
-                        };
-
-                        return JsonSerializer.Serialize(filtered);
-                    }
-                }
-
-                return CreateErrorResponse("SHEET_NOT_FOUND", $"No results found in sheet '{sheetName}'");
+                return result.Content.ToString() ?? CreateErrorResponse("MCP_ERROR", "Empty response from MCP server");
             }
 
-            return CreateErrorResponse("MCP_ERROR", "Failed to search workbook");
+            return CreateErrorResponse("MCP_ERROR", "Failed to search in worksheet");
         }
         catch (Exception ex)
         {
-            return CreateErrorResponse("MCP_ERROR", $"Error searching in sheet: {ex.Message}");
+            return CreateErrorResponse("MCP_ERROR", $"Error searching in worksheet: {ex.Message}");
         }
     }
 
