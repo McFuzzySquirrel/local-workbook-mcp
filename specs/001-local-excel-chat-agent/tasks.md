@@ -87,18 +87,18 @@
 
 ### MCP-Wrapping Plugins (Core Dependencies)
 
-- [ ] T028 [P] [US1] Create `src/ExcelMcp.ChatWeb/Services/Plugins/WorkbookStructurePlugin.cs` with constructor accepting IMcpClient
-- [ ] T029 [US1] Implement `WorkbookStructurePlugin.ListWorkbookStructure()` method with [KernelFunction] attribute, calling MCP excel-list-structure tool
-- [ ] T030 [US1] Implement `WorkbookStructurePlugin.GetSheetNames()` method, deriving from excel-list-structure response
-- [ ] T031 [US1] Implement `WorkbookStructurePlugin.GetTableInfo(string sheetName)` method, filtering excel-list-structure by sheet
-- [ ] T032 [P] [US1] Create `src/ExcelMcp.ChatWeb/Services/Plugins/WorkbookSearchPlugin.cs` with constructor accepting IMcpClient
-- [ ] T033 [US1] Implement `WorkbookSearchPlugin.SearchWorkbook(string searchText, int maxResults)` method calling MCP excel-search tool
-- [ ] T034 [US1] Implement `WorkbookSearchPlugin.SearchInSheet(string sheetName, string searchText, int maxResults)` method with sheet filter
-- [ ] T035 [P] [US1] Create `src/ExcelMcp.ChatWeb/Services/Plugins/DataRetrievalPlugin.cs` with constructor accepting IMcpClient
-- [ ] T036 [US1] Implement `DataRetrievalPlugin.PreviewTable(string name, int rowCount, int startRow)` method calling MCP excel-preview-table tool
-- [ ] T037 [US1] Implement `DataRetrievalPlugin.GetRowsInRange(string sheetName, string cellRange)` method using MCP excel-preview-table with range
-- [ ] T038 [US1] Implement `DataRetrievalPlugin.CalculateAggregation(string name, string column, string aggregationType)` method (retrieve data + calculate)
-- [ ] T039 [US1] Add error handling to all plugin methods to return standardized error JSON with codes: NO_WORKBOOK, SHEET_NOT_FOUND, MCP_ERROR, etc.
+- [X] T028 [P] [US1] Create `src/ExcelMcp.ChatWeb/Services/Plugins/WorkbookStructurePlugin.cs` with constructor accepting IMcpClient
+- [X] T029 [US1] Implement `WorkbookStructurePlugin.ListWorkbookStructure()` method with [KernelFunction] attribute, calling MCP excel-list-structure tool
+- [X] T030 [US1] Implement `WorkbookStructurePlugin.GetSheetNames()` method, deriving from excel-list-structure response
+- [X] T031 [US1] Implement `WorkbookStructurePlugin.GetTableInfo(string sheetName)` method, filtering excel-list-structure by sheet
+- [X] T032 [P] [US1] Create `src/ExcelMcp.ChatWeb/Services/Plugins/WorkbookSearchPlugin.cs` with constructor accepting IMcpClient
+- [X] T033 [US1] Implement `WorkbookSearchPlugin.SearchWorkbook(string searchText, int maxResults)` method calling MCP excel-search tool
+- [X] T034 [US1] Implement `WorkbookSearchPlugin.SearchInSheet(string sheetName, string searchText, int maxResults)` method with sheet filter
+- [X] T035 [P] [US1] Create `src/ExcelMcp.ChatWeb/Services/Plugins/DataRetrievalPlugin.cs` with constructor accepting IMcpClient
+- [X] T036 [US1] Implement `DataRetrievalPlugin.PreviewTable(string name, int rowCount, int startRow)` method calling MCP excel-preview-table tool
+- [X] T037 [US1] Implement `DataRetrievalPlugin.GetRowsInRange(string sheetName, string cellRange)` method using MCP excel-preview-table with range
+- [X] T038 [US1] Implement `DataRetrievalPlugin.CalculateAggregation(string name, string column, string aggregationType)` method (retrieve data + calculate)
+- [X] T039 [US1] Add error handling to all plugin methods to return standardized error JSON with codes: NO_WORKBOOK, SHEET_NOT_FOUND, MCP_ERROR, etc.
 
 ### Response Formatting
 
@@ -130,8 +130,8 @@
 
 ### Plugin Registration
 
-- [ ] T059 [US1] Update `src/ExcelMcp.ChatWeb/Program.cs` to register WorkbookStructurePlugin, WorkbookSearchPlugin, DataRetrievalPlugin as singletons
-- [ ] T060 [US1] Update `src/ExcelMcp.ChatWeb/Program.cs` to add plugins to Semantic Kernel using Plugins.AddFromObject for each plugin
+- [X] T059 [US1] Update `src/ExcelMcp.ChatWeb/Program.cs` to register WorkbookStructurePlugin, WorkbookSearchPlugin, DataRetrievalPlugin as singletons
+- [X] T060 [US1] Update `src/ExcelMcp.ChatWeb/Program.cs` to add plugins to Semantic Kernel using Plugins.AddFromObject for each plugin
 - [ ] T061 [US1] Register IExcelAgentService, IConversationManager, IResponseFormatter in dependency injection container
 
 ### Blazor UI Components

@@ -3,7 +3,7 @@ using ExcelMcp.ChatWeb.Models;
 using ExcelMcp.ChatWeb.Options;
 using ExcelMcp.ChatWeb.Services;
 using ExcelMcp.ChatWeb.Services.Agent;
-// using ExcelMcp.ChatWeb.Services.Plugins; // Will be added when plugins are created
+using ExcelMcp.ChatWeb.Services.Plugins;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -51,6 +51,11 @@ builder.Services.AddOptions<ConversationOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// Register plugins first
+builder.Services.AddSingleton<WorkbookStructurePlugin>();
+builder.Services.AddSingleton<WorkbookSearchPlugin>();
+builder.Services.AddSingleton<DataRetrievalPlugin>();
+
 // Semantic Kernel with OpenAI chat completion
 builder.Services.AddSingleton(serviceProvider =>
 {
@@ -64,10 +69,10 @@ builder.Services.AddSingleton(serviceProvider =>
         apiKey: skOptions.ApiKey,
         endpoint: new Uri(skOptions.BaseUrl));
     
-    // Plugins will be added here when they're created
-    // kernelBuilder.Plugins.AddFromObject<WorkbookStructurePlugin>();
-    // kernelBuilder.Plugins.AddFromObject<WorkbookSearchPlugin>();
-    // kernelBuilder.Plugins.AddFromObject<DataRetrievalPlugin>();
+    // Add plugins
+    kernelBuilder.Plugins.AddFromObject(serviceProvider.GetRequiredService<WorkbookStructurePlugin>());
+    kernelBuilder.Plugins.AddFromObject(serviceProvider.GetRequiredService<WorkbookSearchPlugin>());
+    kernelBuilder.Plugins.AddFromObject(serviceProvider.GetRequiredService<DataRetrievalPlugin>());
     
     return kernelBuilder.Build();
 });
@@ -78,11 +83,6 @@ builder.Services.AddSingleton<AgentLogger>();
 // builder.Services.AddScoped<IExcelAgentService, ExcelAgentService>();
 // builder.Services.AddScoped<IConversationManager, ConversationManager>();
 // builder.Services.AddSingleton<IResponseFormatter, ResponseFormatter>();
-
-// Plugins (will be created in Phase 3)
-// builder.Services.AddSingleton<WorkbookStructurePlugin>();
-// builder.Services.AddSingleton<WorkbookSearchPlugin>();
-// builder.Services.AddSingleton<DataRetrievalPlugin>();
 
 // Session state (per Blazor circuit)
 builder.Services.AddScoped<WorkbookSession>();
