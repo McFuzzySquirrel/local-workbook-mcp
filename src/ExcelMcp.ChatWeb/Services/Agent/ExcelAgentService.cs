@@ -75,6 +75,12 @@ public class ExcelAgentService : IExcelAgentService
                 throw new ArgumentException($"Invalid file type. Expected .xlsx or .xls, got {extension}");
             }
 
+            // Initialize/reinitialize MCP client with this workbook
+            if (_mcpClient is McpClientHost mcpHost)
+            {
+                await mcpHost.InitializeWithWorkbookAsync(filePath, null, cancellationToken);
+            }
+
             // Call MCP to get workbook structure
             var result = await _mcpClient.CallToolAsync("excel-list-structure", null, cancellationToken);
             
@@ -212,6 +218,16 @@ public class ExcelAgentService : IExcelAgentService
             var systemContext = $@"You are analyzing the workbook '{session.CurrentContext.WorkbookName}' 
 with {sheets.Count} sheets: {string.Join(", ", sheets)}. 
 Available tables: {string.Join(", ", tables)}.
+
+TOOL SELECTION RULES:
+1. When user asks to SEE/SHOW/DISPLAY actual DATA or ROWS → use preview_table
+   Examples: ""show me rows"", ""display the data"", ""what's in the Sales table"", ""first 10 rows""
+   
+2. When user asks WHAT sheets/tables EXIST or structure info → use list_workbook_structure
+   Examples: ""what sheets are there"", ""list tables"", ""what columns does Sales have""
+
+3. When user asks to SEARCH for specific text → use search_workbook
+   Examples: ""find Laptop"", ""search for California""
 
 IMPORTANT: When you use preview_table and receive CSV data, output it as an HTML table using this format:
 <table class='data-table'>

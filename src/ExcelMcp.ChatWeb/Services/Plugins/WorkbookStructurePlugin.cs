@@ -20,10 +20,12 @@ public class WorkbookStructurePlugin
     }
 
     /// <summary>
-    /// Lists all sheets, tables, and structural information from the loaded workbook.
+    /// Lists metadata about sheets and tables (structure ONLY, not actual data).
+    /// Use this when the user asks WHAT sheets/tables exist or how many rows/columns.
+    /// Do NOT use this when they want to see actual data.
     /// </summary>
     [KernelFunction("list_workbook_structure")]
-    [Description("Lists all sheets, tables, and structural information from the loaded workbook")]
+    [Description("Get metadata about sheets and tables (names, column names, row counts). Use ONLY when user asks 'what sheets exist', 'what tables are there', 'how many rows'. Do NOT use when they want to see actual data - use preview_table instead.")]
     [return: Description("JSON string containing sheets, tables, row/column counts")]
     public async Task<string> ListWorkbookStructure()
     {

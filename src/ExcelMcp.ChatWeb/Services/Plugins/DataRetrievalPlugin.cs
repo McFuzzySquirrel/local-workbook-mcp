@@ -20,13 +20,14 @@ public class DataRetrievalPlugin
     }
 
     /// <summary>
-    /// Previews rows from a worksheet or table.
+    /// Previews actual data rows from a worksheet or table.
+    /// Use this when the user asks to "show", "display", "get", or "preview" actual DATA or ROWS.
     /// </summary>
     [KernelFunction("preview_table")]
-    [Description("Return a CSV preview of rows from a worksheet or optional table within it")]
+    [Description("Get actual data rows from a worksheet or table. Use when user wants to SEE THE DATA (e.g., 'show me rows', 'display data', 'what's in the table'). Returns CSV data with column headers and cell values.")]
     public async Task<string> PreviewTable(
-        [Description("Worksheet name to preview")] string worksheet,
-        [Description("Optional table name within the worksheet")] string? table = null,
+        [Description("Worksheet name to preview (e.g., 'Sales', 'Inventory')")] string worksheet,
+        [Description("Optional table name within the worksheet (e.g., 'SalesTable')")] string? table = null,
         [Description("Maximum number of rows to include (1-100, default: 10)")] int rows = 10)
     {
         try
