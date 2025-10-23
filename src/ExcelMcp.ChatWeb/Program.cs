@@ -1,3 +1,4 @@
+using ExcelMcp.ChatWeb.Components;
 using ExcelMcp.ChatWeb.Logging;
 using ExcelMcp.ChatWeb.Models;
 using ExcelMcp.ChatWeb.Options;
@@ -105,6 +106,10 @@ builder.Services.AddSingleton(static sp =>
     return new ModelInfoDto(options.Model, options.BaseUrl);
 });
 
+// Add Blazor Server services
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+
     var app = builder.Build();
 
     // Add correlation ID middleware for request tracking
@@ -113,9 +118,10 @@ builder.Services.AddSingleton(static sp =>
     // Add Serilog request logging
     app.UseSerilogRequestLogging();
 
-    app.UseDefaultFiles();
     app.UseStaticFiles();
+    app.UseAntiforgery();
 
+    // Legacy API endpoints (keep for backwards compatibility)
     app.MapPost("/api/chat", async (ChatRequestDto request, ChatService chatService, CancellationToken cancellationToken) =>
     {
         var response = await chatService.HandleAsync(request, cancellationToken).ConfigureAwait(false);
@@ -126,7 +132,9 @@ builder.Services.AddSingleton(static sp =>
 
     app.MapGet("/api/model", (ModelInfoDto info) => Results.Json(info));
 
-    app.MapFallbackToFile("/index.html");
+    // Map Blazor components
+    app.MapRazorComponents<App>()
+        .AddInteractiveServerRenderMode();
 
     Log.Information("ExcelMcp.ChatWeb application started successfully");
     app.Run();
