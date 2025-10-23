@@ -209,9 +209,19 @@ public class ExcelAgentService : IExcelAgentService
                 .SelectMany(w => w.Tables.Select(t => t.Name))
                 .ToList() ?? new List<string>();
 
-            var systemContext = $"You are analyzing the workbook '{session.CurrentContext.WorkbookName}' " +
-                               $"with {sheets.Count} sheets: {string.Join(", ", sheets)}. " +
-                               $"Available tables: {string.Join(", ", tables)}.";
+            var systemContext = $@"You are analyzing the workbook '{session.CurrentContext.WorkbookName}' 
+with {sheets.Count} sheets: {string.Join(", ", sheets)}. 
+Available tables: {string.Join(", ", tables)}.
+
+IMPORTANT: When you use preview_table and receive CSV data, output it as an HTML table using this format:
+<table class='data-table'>
+<thead><tr><th>Column1</th><th>Column2</th></tr></thead>
+<tbody>
+<tr><td>value1</td><td>value2</td></tr>
+</tbody>
+</table>
+
+Do NOT describe the data or reformat it as markdown. Present the actual data in HTML table format.";
             
             chatHistory.AddSystemMessage(systemContext);
 
