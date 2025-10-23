@@ -136,22 +136,22 @@
 
 ### Blazor UI Components
 
-- [ ] T062 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Shared/WorkbookSelector.razor` with file input and load button
-- [ ] T063 [US1] Add event callback `OnWorkbookSelected` to WorkbookSelector emitting selected file path
-- [ ] T064 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Shared/ChatMessage.razor` component accepting ConversationTurn parameter
-- [ ] T065 [US1] Add rendering logic to ChatMessage: display role, timestamp, content (text or HTML table based on ContentType)
-- [ ] T066 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Shared/DataTable.razor` component accepting TableData parameter
-- [ ] T067 [US1] Implement DataTable rendering HTML table with columns from TableData.Columns and rows from TableData.Rows
-- [ ] T068 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Shared/LoadingIndicator.razor` component showing spinner during processing
-- [ ] T069 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Pages/Chat.razor` main chat page with WorkbookSelector, message list, input box
-- [ ] T070 [US1] Create `src/ExcelMcp.ChatWeb/Components/Pages/Chat.razor.cs` code-behind injecting IExcelAgentService and WorkbookSession
-- [ ] T071 [US1] Implement `Chat.razor.cs.OnWorkbookSelected(filePath)` handler calling LoadWorkbookAsync and displaying result
-- [ ] T072 [US1] Implement `Chat.razor.cs.OnQuerySubmitted(query)` handler calling ProcessQueryAsync with loading state and error handling
-- [ ] T073 [US1] Add CancellationTokenSource to Chat.razor.cs for timeout support, disposing on component disposal
-- [ ] T074 [US1] Bind message list in Chat.razor to session.ConversationHistory for display
-- [ ] T075 [US1] Add "Clear History" button to Chat.razor triggering ClearConversationAsync
-- [ ] T076 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Layout/MainLayout.razor` basic layout with title and main content area
-- [ ] T077 [P] [US1] Add CSS styles to `src/ExcelMcp.ChatWeb/wwwroot/styles.css` for chat messages, tables, loading indicator
+- [X] T062 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Shared/WorkbookSelector.razor` with file input and load button
+- [X] T063 [US1] Add event callback `OnWorkbookSelected` to WorkbookSelector emitting selected file path
+- [X] T064 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Shared/ChatMessage.razor` component accepting ConversationTurn parameter
+- [X] T065 [US1] Add rendering logic to ChatMessage: display role, timestamp, content (text or HTML table based on ContentType)
+- [X] T066 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Shared/DataTable.razor` component accepting TableData parameter
+- [X] T067 [US1] Implement DataTable rendering HTML table with columns from TableData.Columns and rows from TableData.Rows
+- [X] T068 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Shared/LoadingIndicator.razor` component showing spinner during processing
+- [X] T069 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Pages/Chat.razor` main chat page with WorkbookSelector, message list, input box
+- [X] T070 [US1] Create `src/ExcelMcp.ChatWeb/Components/Pages/Chat.razor.cs` code-behind injecting IExcelAgentService and WorkbookSession
+- [X] T071 [US1] Implement `Chat.razor.cs.OnWorkbookSelected(filePath)` handler calling LoadWorkbookAsync and displaying result
+- [X] T072 [US1] Implement `Chat.razor.cs.OnQuerySubmitted(query)` handler calling ProcessQueryAsync with loading state and error handling
+- [X] T073 [US1] Add CancellationTokenSource to Chat.razor.cs for timeout support, disposing on component disposal
+- [X] T074 [US1] Bind message list in Chat.razor to session.ConversationHistory for display
+- [X] T075 [US1] Add "Clear History" button to Chat.razor triggering ClearConversationAsync
+- [X] T076 [P] [US1] Create `src/ExcelMcp.ChatWeb/Components/Layout/MainLayout.razor` basic layout with title and main content area
+- [X] T077 [P] [US1] Add CSS styles to `src/ExcelMcp.ChatWeb/wwwroot/styles.css` for chat messages, tables, loading indicator
 
 ### Validation & Integration
 

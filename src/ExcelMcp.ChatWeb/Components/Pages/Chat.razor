@@ -1,0 +1,279 @@
+@page "/"
+@using ExcelMcp.ChatWeb.Models
+@using ExcelMcp.ChatWeb.Services.Agent
+@using ExcelMcp.ChatWeb.Components.Shared
+@using Microsoft.AspNetCore.Components.Web
+@inject IExcelAgentService AgentService
+@inject WorkbookSession Session
+@implements IDisposable
+
+<PageTitle>Excel Chat Agent</PageTitle>
+
+<div class="chat-container">
+    <div class="chat-sidebar">
+        <WorkbookSelector OnWorkbookSelected="HandleWorkbookSelected" />
+        
+        @if (Session.CurrentContext != null && Session.CurrentContext.IsValid)
+        {
+            <div class="workbook-info">
+                <h4>Loaded Workbook</h4>
+                <p class="workbook-name">📄 @Session.CurrentContext.WorkbookName</p>
+                @if (Session.CurrentContext.Metadata != null)
+                {
+                    <div class="workbook-details">
+                        <p><strong>Sheets:</strong> @Session.CurrentContext.Metadata.Worksheets.Count</p>
+                        <ul class="sheet-list">
+                            @foreach (var sheet in Session.CurrentContext.Metadata.Worksheets.Take(5))
+                            {
+                                <li>@sheet.Name</li>
+                            }
+                            @if (Session.CurrentContext.Metadata.Worksheets.Count > 5)
+                            {
+                                <li class="more-indicator">... and @(Session.CurrentContext.Metadata.Worksheets.Count - 5) more</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <button class="btn btn-secondary btn-small" @onclick="HandleClearHistory">
+                    Clear History
+                </button>
+            </div>
+        }
+
+        @if (suggestedQueries.Any())
+        {
+            <div class="suggested-queries">
+                <h4>Suggested Questions</h4>
+                <ul class="suggestions-list">
+                    @foreach (var suggestion in suggestedQueries)
+                    {
+                        <li>
+                            <button class="suggestion-button" @onclick="() => UseSuggestion(suggestion)">
+                                @suggestion
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+
+    <div class="chat-main">
+        <div class="messages-container" @ref="messagesContainer">
+            @if (!Session.ConversationHistory.Any())
+            {
+                <div class="welcome-message">
+                    <h2>Welcome! 👋</h2>
+                    <p>Load an Excel workbook to get started, then ask questions about your data.</p>
+                    <div class="example-queries">
+                        <p><strong>Example questions:</strong></p>
+                        <ul>
+                            <li>"What sheets are in this workbook?"</li>
+                            <li>"Show me the first 10 rows of the Sales table"</li>
+                            <li>"Search for 'revenue' in the workbook"</li>
+                            <li>"Calculate the sum of the Amount column"</li>
+                        </ul>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @foreach (var turn in Session.ConversationHistory)
+                {
+                    <ChatMessage Turn="turn" />
+                }
+            }
+            
+            @if (isLoading)
+            {
+                <div class="loading-message">
+                    <LoadingIndicator IsVisible="true" Message="@loadingMessage" />
+                </div>
+            }
+        </div>
+
+        <div class="input-container">
+            <form @onsubmit="HandleQuerySubmit" class="query-form">
+                <input type="text" 
+                       class="query-input" 
+                       placeholder="Ask a question about your workbook..."
+                       @bind="currentQuery"
+                       disabled="@(isLoading || Session.CurrentContext == null || !Session.CurrentContext.IsValid)" />
+                <button type="submit" 
+                        class="btn btn-primary send-button"
+                        disabled="@(isLoading || string.IsNullOrWhiteSpace(currentQuery) || Session.CurrentContext == null || !Session.CurrentContext.IsValid)">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-small"></span>
+                    }
+                    else
+                    {
+                        <span>Send</span>
+                    }
+                </button>
+            </form>
+            @if (Session.CurrentContext == null || !Session.CurrentContext.IsValid)
+            {
+                <p class="input-hint">Please load a workbook first</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private ElementReference messagesContainer;
+    private string currentQuery = string.Empty;
+    private bool isLoading = false;
+    private string loadingMessage = "Processing...";
+    private List<string> suggestedQueries = new();
+    private CancellationTokenSource? cancellationTokenSource;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSuggestedQueries();
+    }
+
+    private async Task HandleWorkbookSelected(string filePath)
+    {
+        isLoading = true;
+        loadingMessage = "Loading workbook...";
+        StateHasChanged();
+
+        try
+        {
+            cancellationTokenSource?.Cancel();
+            cancellationTokenSource = new CancellationTokenSource();
+
+            var context = await AgentService.LoadWorkbookAsync(filePath, Session, cancellationTokenSource.Token);
+            
+            if (context.IsValid)
+            {
+                // Add success message to conversation
+                var successTurn = new ConversationTurn
+                {
+                    Role = "system",
+                    Content = $"✅ Workbook loaded successfully: {context.WorkbookName}",
+                    ContentType = ContentType.SystemMessage,
+                    Timestamp = DateTimeOffset.UtcNow,
+                    CorrelationId = string.Empty
+                };
+                Session.ConversationHistory.Add(successTurn);
+                
+                await LoadSuggestedQueries();
+            }
+            else
+            {
+                // Add error message
+                var errorTurn = new ConversationTurn
+                {
+                    Role = "system",
+                    Content = $"❌ Failed to load workbook: {context.ErrorMessage}",
+                    ContentType = ContentType.Error,
+                    Timestamp = DateTimeOffset.UtcNow,
+                    CorrelationId = string.Empty
+                };
+                Session.ConversationHistory.Add(errorTurn);
+            }
+        }
+        catch (Exception ex)
+        {
+            var errorTurn = new ConversationTurn
+            {
+                Role = "system",
+                Content = $"❌ Error loading workbook: {ex.Message}",
+                ContentType = ContentType.Error,
+                Timestamp = DateTimeOffset.UtcNow,
+                CorrelationId = string.Empty
+            };
+            Session.ConversationHistory.Add(errorTurn);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+            await ScrollToBottom();
+        }
+    }
+
+    private async Task HandleQuerySubmit()
+    {
+        if (string.IsNullOrWhiteSpace(currentQuery) || Session.CurrentContext == null || !Session.CurrentContext.IsValid)
+        {
+            return;
+        }
+
+        var query = currentQuery;
+        currentQuery = string.Empty;
+        isLoading = true;
+        loadingMessage = "Thinking...";
+        StateHasChanged();
+
+        try
+        {
+            cancellationTokenSource?.Cancel();
+            cancellationTokenSource = new CancellationTokenSource();
+
+            var response = await AgentService.ProcessQueryAsync(query, Session, cancellationTokenSource.Token);
+            
+            // Response is already added to conversation by the service
+            // Just refresh suggested queries
+            await LoadSuggestedQueries();
+        }
+        catch (Exception ex)
+        {
+            var errorTurn = new ConversationTurn
+            {
+                Role = "assistant",
+                Content = $"❌ Error processing query: {ex.Message}",
+                ContentType = ContentType.Error,
+                Timestamp = DateTimeOffset.UtcNow,
+                CorrelationId = string.Empty
+            };
+            Session.ConversationHistory.Add(errorTurn);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+            await ScrollToBottom();
+        }
+    }
+
+    private async Task HandleClearHistory()
+    {
+        await AgentService.ClearConversationAsync(Session);
+        await LoadSuggestedQueries();
+        StateHasChanged();
+    }
+
+    private async Task LoadSuggestedQueries()
+    {
+        try
+        {
+            suggestedQueries = await AgentService.GetSuggestedQueriesAsync(Session, 3);
+        }
+        catch
+        {
+            suggestedQueries = new List<string>();
+        }
+    }
+
+    private void UseSuggestion(string suggestion)
+    {
+        currentQuery = suggestion;
+        StateHasChanged();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        await Task.Delay(100); // Give DOM time to update
+        // Note: In production, you'd use JS interop to scroll
+        // await JSRuntime.InvokeVoidAsync("scrollToBottom", messagesContainer);
+    }
+
+    public void Dispose()
+    {
+        cancellationTokenSource?.Cancel();
+        cancellationTokenSource?.Dispose();
+    }
+}

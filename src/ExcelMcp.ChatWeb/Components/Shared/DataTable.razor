@@ -1,0 +1,78 @@
+@using ExcelMcp.ChatWeb.Models
+
+@* DataTable Component - Renders structured table data *@
+
+@if (Data == null || !Data.Columns.Any())
+{
+    <div class="empty-table">
+        <p>No data available</p>
+    </div>
+}
+else
+{
+    <div class="data-table-container">
+        @if (Data.Metadata != null)
+        {
+            <div class="table-metadata">
+                @if (!string.IsNullOrEmpty(Data.Metadata.SheetName))
+                {
+                    <span class="metadata-item">Sheet: <strong>@Data.Metadata.SheetName</strong></span>
+                }
+                @if (Data.Metadata.RowCount.HasValue)
+                {
+                    <span class="metadata-item">Total Rows: <strong>@Data.Metadata.RowCount.Value</strong></span>
+                }
+                @if (Data.Metadata.IsTruncated)
+                {
+                    <span class="metadata-item warning">⚠️ Data truncated for display</span>
+                }
+            </div>
+        }
+
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        @foreach (var column in Data.Columns)
+                        {
+                            <th>@column</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Data.Rows.Any())
+                    {
+                        @foreach (var row in Data.Rows)
+                        {
+                            <tr>
+                                @foreach (var cell in row)
+                                {
+                                    <td>@cell</td>
+                                }
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="@Data.Columns.Count" class="empty-state">
+                                No rows to display
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-footer">
+            <span class="row-count">
+                Displaying @Data.Rows.Count row@(Data.Rows.Count != 1 ? "s" : "")
+            </span>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public TableData Data { get; set; } = null!;
+}
