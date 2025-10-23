@@ -79,10 +79,9 @@ builder.Services.AddSingleton(serviceProvider =>
 
 // Agent services
 builder.Services.AddSingleton<AgentLogger>();
-// TODO: Uncomment when implementations are created
-// builder.Services.AddScoped<IExcelAgentService, ExcelAgentService>();
-// builder.Services.AddScoped<IConversationManager, ConversationManager>();
-// builder.Services.AddSingleton<IResponseFormatter, ResponseFormatter>();
+builder.Services.AddScoped<IExcelAgentService, ExcelAgentService>();
+builder.Services.AddScoped<IConversationManager, ConversationManager>();
+builder.Services.AddSingleton<IResponseFormatter, ResponseFormatter>();
 
 // Session state (per Blazor circuit)
 builder.Services.AddScoped<WorkbookSession>();

@@ -102,37 +102,37 @@
 
 ### Response Formatting
 
-- [ ] T040 [US1] Create `src/ExcelMcp.ChatWeb/Services/Agent/ResponseFormatter.cs` implementing IResponseFormatter
-- [ ] T041 [US1] Implement `ResponseFormatter.FormatAsHtmlTable(TableData)` method generating HTML table with headers, borders, styling
-- [ ] T042 [US1] Implement `ResponseFormatter.FormatAsText(string content)` method converting markdown-like syntax to HTML
-- [ ] T043 [US1] Implement `ResponseFormatter.SanitizeErrorMessage(Exception, correlationId)` method mapping exception to SanitizedError with generic messages
+- [X] T040 [US1] Create `src/ExcelMcp.ChatWeb/Services/Agent/ResponseFormatter.cs` implementing IResponseFormatter
+- [X] T041 [US1] Implement `ResponseFormatter.FormatAsHtmlTable(TableData)` method generating HTML table with headers, borders, styling
+- [X] T042 [US1] Implement `ResponseFormatter.FormatAsText(string content)` method converting markdown-like syntax to HTML
+- [X] T043 [US1] Implement `ResponseFormatter.SanitizeErrorMessage(Exception, correlationId)` method mapping exception to SanitizedError with generic messages
 
 ### Conversation Management
 
-- [ ] T044 [US1] Create `src/ExcelMcp.ChatWeb/Services/Agent/ConversationManager.cs` implementing IConversationManager
-- [ ] T045 [US1] Implement `ConversationManager.AddUserTurn(message, correlationId)` adding to full history + context window with eviction (20-turn limit)
-- [ ] T046 [US1] Implement `ConversationManager.AddAssistantTurn(message, correlationId, contentType)` with same rolling window logic
-- [ ] T047 [US1] Implement `ConversationManager.AddSystemMessage(message)` adding to full history only (NOT context window)
-- [ ] T048 [US1] Implement `ConversationManager.GetContextForLLM()` returning SK ChatHistory instance with last 20 turns
-- [ ] T049 [US1] Implement `ConversationManager.GetFullHistory()` returning complete list of ConversationTurn for UI display
+- [X] T044 [US1] Create `src/ExcelMcp.ChatWeb/Services/Agent/ConversationManager.cs` implementing IConversationManager
+- [X] T045 [US1] Implement `ConversationManager.AddUserTurn(message, correlationId)` adding to full history + context window with eviction (20-turn limit)
+- [X] T046 [US1] Implement `ConversationManager.AddAssistantTurn(message, correlationId, contentType)` with same rolling window logic
+- [X] T047 [US1] Implement `ConversationManager.AddSystemMessage(message)` adding to full history only (NOT context window)
+- [X] T048 [US1] Implement `ConversationManager.GetContextForLLM()` returning SK ChatHistory instance with last 20 turns
+- [X] T049 [US1] Implement `ConversationManager.GetFullHistory()` returning complete list of ConversationTurn for UI display
 
 ### Agent Service (Core Orchestration)
 
-- [ ] T050 [US1] Create `src/ExcelMcp.ChatWeb/Services/Agent/ExcelAgentService.cs` implementing IExcelAgentService
-- [ ] T051 [US1] Inject Kernel, IConversationManager, IResponseFormatter, IMcpClient, ILogger into ExcelAgentService constructor
-- [ ] T052 [US1] Implement `ExcelAgentService.LoadWorkbookAsync(filePath, session)` method: validate file, start MCP server, retrieve metadata, create WorkbookContext
-- [ ] T053 [US1] Add system message insertion to LoadWorkbookAsync when workbook changes (e.g., "Workbook changed to Budget.xlsx")
-- [ ] T054 [US1] Implement `ExcelAgentService.ProcessQueryAsync(query, session)` method: validate query, add user turn, invoke SK with context, format response, add assistant turn
-- [ ] T055 [US1] Add timeout handling (30 seconds) to ProcessQueryAsync using CancellationToken
-- [ ] T056 [US1] Add error handling to ProcessQueryAsync: catch exceptions, sanitize errors, return error AgentResponse with retry option
-- [ ] T057 [US1] Implement `ExcelAgentService.ClearConversationAsync(session)` method clearing history and context window (keep workbook loaded)
-- [ ] T058 [US1] Implement `ExcelAgentService.GetSuggestedQueriesAsync(session, maxSuggestions)` analyzing workbook metadata and recent turns for suggestions
+- [X] T050 [US1] Create `src/ExcelMcp.ChatWeb/Services/Agent/ExcelAgentService.cs` implementing IExcelAgentService
+- [X] T051 [US1] Inject Kernel, IConversationManager, IResponseFormatter, IMcpClient, ILogger into ExcelAgentService constructor
+- [X] T052 [US1] Implement `ExcelAgentService.LoadWorkbookAsync(filePath, session)` method: validate file, start MCP server, retrieve metadata, create WorkbookContext
+- [X] T053 [US1] Add system message insertion to LoadWorkbookAsync when workbook changes (e.g., "Workbook changed to Budget.xlsx")
+- [X] T054 [US1] Implement `ExcelAgentService.ProcessQueryAsync(query, session)` method: validate query, add user turn, invoke SK with context, format response, add assistant turn
+- [X] T055 [US1] Add timeout handling (30 seconds) to ProcessQueryAsync using CancellationToken
+- [X] T056 [US1] Add error handling to ProcessQueryAsync: catch exceptions, sanitize errors, return error AgentResponse with retry option
+- [X] T057 [US1] Implement `ExcelAgentService.ClearConversationAsync(session)` method clearing history and context window (keep workbook loaded)
+- [X] T058 [US1] Implement `ExcelAgentService.GetSuggestedQueriesAsync(session, maxSuggestions)` analyzing workbook metadata and recent turns for suggestions
 
 ### Plugin Registration
 
 - [X] T059 [US1] Update `src/ExcelMcp.ChatWeb/Program.cs` to register WorkbookStructurePlugin, WorkbookSearchPlugin, DataRetrievalPlugin as singletons
 - [X] T060 [US1] Update `src/ExcelMcp.ChatWeb/Program.cs` to add plugins to Semantic Kernel using Plugins.AddFromObject for each plugin
-- [ ] T061 [US1] Register IExcelAgentService, IConversationManager, IResponseFormatter in dependency injection container
+- [X] T061 [US1] Register IExcelAgentService, IConversationManager, IResponseFormatter in dependency injection container
 
 ### Blazor UI Components
 
