@@ -50,17 +50,48 @@ dotnet test
 
 ## Quick Starts
 
-> **Note:** The chat web app expects [LM Studio](https://lmstudio.ai/) (or any OpenAI-compatible local server) to be running on `http://localhost:1234` with the `phi-4-mini-reasoning` model downloaded and loaded. Update `LlmStudio:BaseUrl` and `LlmStudio:Model` in `appsettings.json` if you host a different endpoint/model. See the user guide for setup steps.
+> **Note:** The chat web app requires a local LLM server running on `http://localhost:1234` (e.g., [LM Studio](https://lmstudio.ai/) with a model loaded). The app has been tested with `phi-4-mini-reasoning` but should work with any OpenAI-compatible endpoint. Update `LlmStudio:BaseUrl` and `LlmStudio:Model` in `appsettings.json` to match your setup.
+
+### Running the Web UI (Recommended)
+
+The web UI provides a chat interface where you can upload Excel files and ask questions about them:
+
+```pwsh
+# 1. Start your local LLM server (e.g., LM Studio on port 1234)
+
+# 2. Run the web app
+dotnet run --project src/ExcelMcp.ChatWeb
+
+# 3. Open http://localhost:5000 in your browser
+
+# 4. Click "Choose Excel file..." to upload a workbook
+
+# 5. Ask questions like:
+#    - "What sheets are in this workbook?"
+#    - "Show me the first 10 rows of the Sales table"
+#    - "Search for Laptop in the workbook"
+```
+
+The web app automatically:
+- Starts the MCP server when you load a workbook
+- Calls the appropriate MCP tools based on your questions
+- Renders table data as HTML tables
+- Maintains conversation history
+
+### Running the CLI Client
+
+```pwsh
+# Use the CLI client (prompts for workbook path on first run)
+dotnet run --project src/ExcelMcp.Client -- list
+dotnet run --project src/ExcelMcp.Client -- search "product name"
+dotnet run --project src/ExcelMcp.Client -- preview Sales --rows 10
+```
+
+### Running the MCP Server Directly
 
 ```pwsh
 # Run the stdio MCP server directly
 dotnet run --project src/ExcelMcp.Server -- --workbook "D:/Data/sample.xlsx"
-
-# Use the CLI client (prompts for missing workbook/server values)
-dotnet run --project src/ExcelMcp.Client -- list
-
-# Launch the chat UI (serves wwwroot at http://localhost:5000)
-dotnet run --project src/ExcelMcp.ChatWeb
 ```
 
 ## Example mcp,json for VS Code
