@@ -84,57 +84,32 @@ public class ExcelAgentService : IExcelAgentService
             // Call MCP to get workbook structure
             var result = await _mcpClient.CallToolAsync("excel-list-structure", null, cancellationToken);
             
-            if (result.IsError || result.Content == null)
+            if (result.IsError || result.Content == null || result.Content.Count == 0)
             {
                 throw new InvalidOperationException("Failed to retrieve workbook structure from MCP server");
             }
 
-            var structureJson = result.Content.ToString();
-            if (string.IsNullOrEmpty(structureJson))
+            // Extract the text content from the first content item (should be JSON)
+            var firstContent = result.Content[0];
+            var metadataJson = firstContent.Text;
+            
+            if (string.IsNullOrEmpty(metadataJson))
             {
                 throw new InvalidOperationException("Empty response from MCP server");
             }
 
-            var structure = JsonSerializer.Deserialize<JsonDocument>(structureJson);
-            var sheetsElement = structure?.RootElement.GetProperty("sheets");
-            
-            var worksheets = new List<WorksheetMetadata>();
-
-            if (sheetsElement.HasValue)
+            // Deserialize the WorkbookMetadata directly from the MCP response
+            var jsonOptions = new JsonSerializerOptions
             {
-                foreach (var sheet in sheetsElement.Value.EnumerateArray())
-                {
-                    var sheetName = sheet.GetProperty("name").GetString() ?? "Unknown";
-                    var tables = new List<ExcelMcp.Contracts.TableMetadata>();
-                    var columnHeaders = new List<string>();
-
-                    if (sheet.TryGetProperty("tables", out var tablesElement))
-                    {
-                        foreach (var table in tablesElement.EnumerateArray())
-                        {
-                            var tableName = table.GetString();
-                            if (!string.IsNullOrEmpty(tableName))
-                            {
-                                // Create table metadata (we'll get details later if needed)
-                                tables.Add(new ExcelMcp.Contracts.TableMetadata(
-                                    tableName,
-                                    sheetName,
-                                    new List<string>(), // Column headers not available from list-structure
-                                    0 // Row count not available
-                                ));
-                            }
-                        }
-                    }
-
-                    worksheets.Add(new WorksheetMetadata(sheetName, tables, columnHeaders));
-                }
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+            var metadata = JsonSerializer.Deserialize<WorkbookMetadata>(metadataJson, jsonOptions);
+            
+            if (metadata == null)
+            {
+                throw new InvalidOperationException("Failed to deserialize workbook metadata");
             }
-
-            var metadata = new WorkbookMetadata(
-                filePath,
-                worksheets,
-                DateTimeOffset.UtcNow
-            );
 
             var context = new WorkbookContext
             {

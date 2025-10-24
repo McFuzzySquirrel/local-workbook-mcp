@@ -1,5 +1,5 @@
 using ExcelMcp.ChatWeb.Models;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace ExcelMcp.ChatWeb.Logging;
 
@@ -8,9 +8,9 @@ namespace ExcelMcp.ChatWeb.Logging;
 /// </summary>
 public class AgentLogger
 {
-    private readonly Serilog.ILogger _logger;
+    private readonly ILogger<AgentLogger> _logger;
 
-    public AgentLogger(Serilog.ILogger logger)
+    public AgentLogger(ILogger<AgentLogger> logger)
     {
         _logger = logger;
     }
@@ -20,7 +20,7 @@ public class AgentLogger
     /// </summary>
     public void LogQuery(string correlationId, string query, string? workbookName = null)
     {
-        _logger.Information(
+        _logger.LogInformation(
             "Agent query received. CorrelationId: {CorrelationId}, Workbook: {WorkbookName}, QueryLength: {QueryLength}",
             correlationId,
             workbookName ?? "None",
@@ -34,7 +34,7 @@ public class AgentLogger
     {
         if (invocation.Success)
         {
-            _logger.Information(
+            _logger.LogInformation(
                 "Tool invoked successfully. CorrelationId: {CorrelationId}, Tool: {ToolName}, Plugin: {PluginMethod}, Duration: {DurationMs}ms",
                 correlationId,
                 invocation.ToolName,
@@ -43,7 +43,7 @@ public class AgentLogger
         }
         else
         {
-            _logger.Warning(
+            _logger.LogWarning(
                 "Tool invocation failed. CorrelationId: {CorrelationId}, Tool: {ToolName}, Plugin: {PluginMethod}, Duration: {DurationMs}ms, Error: {ErrorMessage}",
                 correlationId,
                 invocation.ToolName,
@@ -58,7 +58,7 @@ public class AgentLogger
     /// </summary>
     public void LogResponse(AgentResponse response)
     {
-        _logger.Information(
+        _logger.LogInformation(
             "Agent response generated. CorrelationId: {CorrelationId}, ContentType: {ContentType}, ProcessingTime: {ProcessingTimeMs}ms, ToolsInvoked: {ToolCount}, Model: {Model}",
             response.CorrelationId,
             response.ContentType,
@@ -72,7 +72,7 @@ public class AgentLogger
     /// </summary>
     public void LogError(string correlationId, Exception exception, string context)
     {
-        _logger.Error(
+        _logger.LogError(
             exception,
             "Agent error occurred. CorrelationId: {CorrelationId}, Context: {Context}, ExceptionType: {ExceptionType}",
             correlationId,
@@ -87,7 +87,7 @@ public class AgentLogger
     {
         if (success)
         {
-            _logger.Information(
+            _logger.LogInformation(
                 "Workbook loaded successfully. CorrelationId: {CorrelationId}, Workbook: {WorkbookName}, Sheets: {SheetCount}",
                 correlationId,
                 Path.GetFileName(workbookPath),
@@ -95,7 +95,7 @@ public class AgentLogger
         }
         else
         {
-            _logger.Warning(
+            _logger.LogWarning(
                 "Workbook load failed. CorrelationId: {CorrelationId}, WorkbookPath: {WorkbookPath}",
                 correlationId,
                 workbookPath);
@@ -107,7 +107,7 @@ public class AgentLogger
     /// </summary>
     public void LogConversationCleared(string sessionId, int turnCount)
     {
-        _logger.Information(
+        _logger.LogInformation(
             "Conversation cleared. SessionId: {SessionId}, TurnsCleared: {TurnCount}",
             sessionId,
             turnCount);

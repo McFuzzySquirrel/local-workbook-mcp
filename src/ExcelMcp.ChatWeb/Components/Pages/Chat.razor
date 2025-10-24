@@ -1,4 +1,5 @@
 @page "/"
+@rendermode InteractiveServer
 @using ExcelMcp.ChatWeb.Models
 @using ExcelMcp.ChatWeb.Services.Agent
 @using ExcelMcp.ChatWeb.Components.Shared
@@ -10,54 +11,6 @@
 <PageTitle>Excel Chat Agent</PageTitle>
 
 <div class="chat-container">
-    <div class="chat-sidebar">
-        <WorkbookSelector OnWorkbookSelected="HandleWorkbookSelected" />
-        
-        @if (Session.CurrentContext != null && Session.CurrentContext.IsValid)
-        {
-            <div class="workbook-info">
-                <h4>Loaded Workbook</h4>
-                <p class="workbook-name">📄 @Session.CurrentContext.WorkbookName</p>
-                @if (Session.CurrentContext.Metadata != null)
-                {
-                    <div class="workbook-details">
-                        <p><strong>Sheets:</strong> @Session.CurrentContext.Metadata.Worksheets.Count</p>
-                        <ul class="sheet-list">
-                            @foreach (var sheet in Session.CurrentContext.Metadata.Worksheets.Take(5))
-                            {
-                                <li>@sheet.Name</li>
-                            }
-                            @if (Session.CurrentContext.Metadata.Worksheets.Count > 5)
-                            {
-                                <li class="more-indicator">... and @(Session.CurrentContext.Metadata.Worksheets.Count - 5) more</li>
-                            }
-                        </ul>
-                    </div>
-                }
-                <button class="btn btn-secondary btn-small" @onclick="HandleClearHistory">
-                    Clear History
-                </button>
-            </div>
-        }
-
-        @if (suggestedQueries.Any())
-        {
-            <div class="suggested-queries">
-                <h4>Suggested Questions</h4>
-                <ul class="suggestions-list">
-                    @foreach (var suggestion in suggestedQueries)
-                    {
-                        <li>
-                            <button class="suggestion-button" @onclick="() => UseSuggestion(suggestion)">
-                                @suggestion
-                            </button>
-                        </li>
-                    }
-                </ul>
-            </div>
-        }
-    </div>
-
     <div class="chat-main">
         <div class="messages-container" @ref="messagesContainer">
             @if (!Session.ConversationHistory.Any())
@@ -117,6 +70,54 @@
                 <p class="input-hint">Please load a workbook first</p>
             }
         </div>
+    </div>
+    
+    <div class="chat-sidebar">
+        <WorkbookSelector OnWorkbookSelected="HandleWorkbookSelected" />
+        
+        @if (Session.CurrentContext != null && Session.CurrentContext.IsValid)
+        {
+            <div class="workbook-info">
+                <h4>Loaded Workbook</h4>
+                <p class="workbook-name">📄 @Session.CurrentContext.WorkbookName</p>
+                @if (Session.CurrentContext.Metadata != null)
+                {
+                    <div class="workbook-details">
+                        <p><strong>Sheets:</strong> @Session.CurrentContext.Metadata.Worksheets.Count</p>
+                        <ul class="sheet-list">
+                            @foreach (var sheet in Session.CurrentContext.Metadata.Worksheets.Take(5))
+                            {
+                                <li>@sheet.Name</li>
+                            }
+                            @if (Session.CurrentContext.Metadata.Worksheets.Count > 5)
+                            {
+                                <li class="more-indicator">... and @(Session.CurrentContext.Metadata.Worksheets.Count - 5) more</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <button class="btn btn-secondary btn-small" @onclick="HandleClearHistory">
+                    Clear History
+                </button>
+            </div>
+        }
+
+        @if (suggestedQueries.Any())
+        {
+            <div class="suggested-queries">
+                <h4>Suggested Questions</h4>
+                <ul class="suggestions-list">
+                    @foreach (var suggestion in suggestedQueries)
+                    {
+                        <li>
+                            <button class="suggestion-button" @onclick="() => UseSuggestion(suggestion)">
+                                @suggestion
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
     </div>
 </div>
 
