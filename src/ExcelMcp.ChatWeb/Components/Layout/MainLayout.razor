@@ -1,0 +1,23 @@
+@* MainLayout Component - Primary layout for the application *@
+
+@inherits LayoutComponentBase
+
+<div class="app-container">
+    <header class="app-header">
+        <div class="header-content">
+            <h1 class="app-title">
+                <span class="title-icon">📊</span>
+                Excel Conversational Agent
+            </h1>
+            <p class="app-subtitle">Ask questions about your Excel workbooks using natural language</p>
+        </div>
+    </header>
+
+    <main class="app-main">
+        @Body
+    </main>
+
+    <footer class="app-footer">
+        <p>Powered by Semantic Kernel + MCP + Local LLM</p>
+    </footer>
+</div>

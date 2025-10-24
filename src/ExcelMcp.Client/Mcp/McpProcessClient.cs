@@ -86,10 +86,15 @@ public sealed class McpProcessClient : IAsyncDisposable
 
     public async Task<McpToolCallResult> CallToolAsync(string name, JsonNode? arguments, CancellationToken cancellationToken)
     {
+        // Clone the arguments node to avoid "node already has a parent" errors
+        JsonNode? argumentsCopy = arguments != null 
+            ? JsonNode.Parse(arguments.ToJsonString()) 
+            : null;
+
         var parameters = new JsonObject
         {
             ["name"] = name,
-            ["arguments"] = arguments
+            ["arguments"] = argumentsCopy ?? new JsonObject()
         };
 
         using var response = await _jsonRpc.SendRequestAsync("tools/call", parameters, cancellationToken).ConfigureAwait(false);

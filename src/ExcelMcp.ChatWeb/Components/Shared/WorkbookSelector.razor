@@ -1,0 +1,136 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+@* WorkbookSelector Component - File input for loading Excel workbooks *@
+
+<div class="workbook-selector">
+    <div class="selector-header">
+        <h3>Load Workbook</h3>
+    </div>
+    
+    <div class="file-input-container">
+        <label for="workbook-file" class="file-label">
+            <span class="file-icon">📁</span>
+            <span class="file-text">@(selectedFileName ?? "Choose Excel file...")</span>
+        </label>
+        <InputFile id="workbook-file" 
+                   OnChange="HandleFileSelected" 
+                   accept=".xlsx,.xls"
+                   class="file-input" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(selectedFilePath))
+    {
+        <div class="file-actions">
+            <button class="btn btn-primary" 
+                    @onclick="LoadWorkbook" 
+                    disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-small"></span>
+                    <span>Loading...</span>
+                }
+                else
+                {
+                    <span>Load Workbook</span>
+                }
+            </button>
+            <button class="btn btn-secondary" 
+                    @onclick="ClearSelection"
+                    disabled="@isLoading">
+                Clear
+            </button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">
+            <span class="error-icon">⚠️</span>
+            <span>@errorMessage</span>
+        </div>
+    }
+</div>
+
+@code {
+    private string? selectedFilePath;
+    private string? selectedFileName;
+    private string? errorMessage;
+    private bool isLoading;
+
+    [Parameter]
+    public EventCallback<string> OnWorkbookSelected { get; set; }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        
+        var file = e.File;
+        if (file == null)
+        {
+            return;
+        }
+
+        // Validate file extension
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (extension != ".xlsx" && extension != ".xls")
+        {
+            errorMessage = "Please select a valid Excel file (.xlsx or .xls)";
+            selectedFilePath = null;
+            selectedFileName = null;
+            return;
+        }
+
+        // For Blazor Server, we need to save the file to a temp location
+        // Note: In production, you might want a different approach
+        var tempPath = Path.Combine(Path.GetTempPath(), $"workbook_{Guid.NewGuid():N}{extension}");
+        
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024); // 50MB max
+            await using var fileStream = File.Create(tempPath);
+            await stream.CopyToAsync(fileStream);
+
+            selectedFilePath = tempPath;
+            selectedFileName = file.Name;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to read file: {ex.Message}";
+            selectedFilePath = null;
+            selectedFileName = null;
+        }
+    }
+
+    private async Task LoadWorkbook()
+    {
+        if (string.IsNullOrEmpty(selectedFilePath))
+        {
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await OnWorkbookSelected.InvokeAsync(selectedFilePath);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load workbook: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ClearSelection()
+    {
+        selectedFilePath = null;
+        selectedFileName = null;
+        errorMessage = null;
+    }
+}

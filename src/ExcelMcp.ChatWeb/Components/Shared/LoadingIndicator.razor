@@ -1,0 +1,19 @@
+@* LoadingIndicator Component - Shows spinner during async operations *@
+
+<div class="loading-indicator @(IsVisible ? "visible" : "hidden")">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <p class="loading-message">@Message</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public string? Message { get; set; }
+}

@@ -225,30 +225,10 @@ internal sealed class McpServer
     private async Task<McpToolCallResult> HandleListStructureAsync(JsonNode? arguments, CancellationToken cancellationToken)
     {
         var metadata = await _workbookService.GetMetadataAsync(cancellationToken).ConfigureAwait(false);
-        var summary = new StringBuilder();
-        summary.AppendLine($"Workbook: {metadata.WorkbookPath}");
-        summary.AppendLine($"Last loaded: {metadata.LastLoadedUtc:u}");
-        foreach (var worksheet in metadata.Worksheets)
-        {
-            summary.AppendLine($"- Worksheet: {worksheet.Name}");
-            if (worksheet.ColumnHeaders.Count > 0)
-            {
-                summary.AppendLine($"  Columns: {string.Join(", ", worksheet.ColumnHeaders)}");
-            }
-
-            if (worksheet.Tables.Count == 0)
-            {
-                continue;
-            }
-
-            foreach (var table in worksheet.Tables)
-            {
-                summary.AppendLine($"  • Table: {table.Name} ({table.RowCount} rows)");
-                summary.AppendLine($"    Columns: {string.Join(", ", table.ColumnHeaders)}");
-            }
-        }
-
-        var content = new McpToolContent("text", Text: summary.ToString().TrimEnd());
+        
+        // Return the metadata as JSON for programmatic access
+        var jsonMetadata = JsonSerializer.Serialize(metadata, JsonOptions.Serializer);
+        var content = new McpToolContent("text", Text: jsonMetadata);
         return new McpToolCallResult(new[] { content });
     }
 

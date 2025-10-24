@@ -55,3 +55,25 @@ nunit-*.xml
 
 # Published artifacts
 **/dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs from agent (specific to this project)
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.bak

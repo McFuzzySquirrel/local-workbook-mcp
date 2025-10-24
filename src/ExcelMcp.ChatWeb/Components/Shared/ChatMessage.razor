@@ -1,0 +1,75 @@
+@using ExcelMcp.ChatWeb.Models
+
+@* ChatMessage Component - Displays a single conversation turn *@
+
+<div class="chat-message @GetRoleClass()">
+    <div class="message-header">
+        <span class="message-role">@GetRoleDisplay()</span>
+        <span class="message-timestamp">@Turn.Timestamp.ToLocalTime().ToString("HH:mm:ss")</span>
+    </div>
+    
+    <div class="message-content">
+        @if (Turn.ContentType == ContentType.Error && !string.IsNullOrEmpty(Turn.Content))
+        {
+            <div class="error-content">
+                <span class="error-icon">⚠️</span>
+                <div class="error-text">
+                    @((MarkupString)Turn.Content)
+                </div>
+            </div>
+        }
+        else if (Turn.ContentType == ContentType.Table && !string.IsNullOrEmpty(Turn.Content))
+        {
+            <div class="table-content">
+                @((MarkupString)Turn.Content)
+            </div>
+        }
+        else if (Turn.ContentType == ContentType.SystemMessage)
+        {
+            <div class="system-message">
+                <span class="system-icon">ℹ️</span>
+                <span>@Turn.Content</span>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(Turn.Content))
+        {
+            <div class="text-content">
+                @((MarkupString)Turn.Content)
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(Turn.CorrelationId))
+    {
+        <div class="message-footer">
+            <span class="correlation-id" title="Correlation ID for troubleshooting">ID: @Turn.CorrelationId</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConversationTurn Turn { get; set; } = null!;
+
+    private string GetRoleClass()
+    {
+        return Turn.Role switch
+        {
+            "user" => "message-user",
+            "assistant" => "message-assistant",
+            "system" => "message-system",
+            _ => "message-unknown"
+        };
+    }
+
+    private string GetRoleDisplay()
+    {
+        return Turn.Role switch
+        {
+            "user" => "You",
+            "assistant" => "Assistant",
+            "system" => "System",
+            _ => Turn.Role
+        };
+    }
+}
