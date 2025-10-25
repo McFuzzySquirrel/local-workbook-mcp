@@ -1,3 +1,6 @@
+# NOTE: Changes still in progress
+May cause breaking changes
+
 # Excel Local MCP
 
 Local Model Context Protocol server, CLI client, and chat web UI for working with on-disk Excel workbooks. The server exposes worksheet metadata, table previews, and search capabilities via MCP tools and resources. Everything runs locally, ships with self-contained binaries, and exposes a consistent MCP surface so agents can inspect spreadsheets without uploading them.
