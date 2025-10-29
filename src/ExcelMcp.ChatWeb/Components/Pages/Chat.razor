@@ -221,7 +221,10 @@
             var response = await AgentService.ProcessQueryAsync(query, Session, cancellationTokenSource.Token);
             
             // Response is already added to conversation by the service
-            // Just refresh suggested queries
+            // Force UI update to display the new message
+            StateHasChanged();
+            
+            // Refresh suggested queries
             await LoadSuggestedQueries();
         }
         catch (Exception ex)
