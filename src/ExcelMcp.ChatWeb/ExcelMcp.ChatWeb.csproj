@@ -4,12 +4,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <NoWarn>SKEXP0010</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\ExcelMcp.Client\ExcelMcp.Client.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.SemanticKernel" Version="1.66.0" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.28.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />

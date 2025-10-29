@@ -11,6 +11,49 @@
 <PageTitle>Excel Chat Agent</PageTitle>
 
 <div class="chat-container">
+    <div class="chat-sidebar">
+        <WorkbookSelector OnWorkbookSelected="HandleWorkbookSelected" />
+        
+        @if (Session.CurrentContext != null && Session.CurrentContext.IsValid)
+        {
+            <div class="workbook-info">
+                <h4>Loaded Workbook</h4>
+                <p class="workbook-name">📄 @Session.CurrentContext.WorkbookName</p>
+                @if (Session.CurrentContext.Metadata != null)
+                {
+                    <div class="workbook-details">
+                        <p><strong>Sheets:</strong> @Session.CurrentContext.Metadata.Worksheets.Count</p>
+                        <ul class="sheet-list">
+                            @foreach (var sheet in Session.CurrentContext.Metadata.Worksheets.Take(5))
+                            {
+                                <li>@sheet.Name</li>
+                            }
+                            @if (Session.CurrentContext.Metadata.Worksheets.Count > 5)
+                            {
+                                <li class="more-indicator">... and @(Session.CurrentContext.Metadata.Worksheets.Count - 5) more</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <button class="btn btn-secondary btn-small" @onclick="HandleClearHistory">
+                    Clear History
+                </button>
+            </div>
+            
+            <div class="suggested-queries">
+                <h4>Suggested Questions</h4>
+                <div class="query-suggestions">
+                    @foreach (var query in suggestedQueries)
+                    {
+                        <button class="suggestion-button" @onclick="() => UseSuggestion(query)">
+                            @query
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+    
     <div class="chat-main">
         <div class="messages-container" @ref="messagesContainer">
             @if (!Session.ConversationHistory.Any())
@@ -51,10 +94,10 @@
                        class="query-input" 
                        placeholder="Ask a question about your workbook..."
                        @bind="currentQuery"
-                       disabled="@(isLoading || Session.CurrentContext == null || !Session.CurrentContext.IsValid)" />
+                       disabled="@(isLoading || !IsWorkbookReady)" />
                 <button type="submit" 
                         class="btn btn-primary send-button"
-                        disabled="@(isLoading || string.IsNullOrWhiteSpace(currentQuery) || Session.CurrentContext == null || !Session.CurrentContext.IsValid)">
+                        disabled="@(isLoading || string.IsNullOrWhiteSpace(currentQuery) || !IsWorkbookReady)">
                     @if (isLoading)
                     {
                         <span class="spinner-small"></span>
@@ -65,59 +108,11 @@
                     }
                 </button>
             </form>
-            @if (Session.CurrentContext == null || !Session.CurrentContext.IsValid)
+            @if (!IsWorkbookReady)
             {
                 <p class="input-hint">Please load a workbook first</p>
             }
         </div>
-    </div>
-    
-    <div class="chat-sidebar">
-        <WorkbookSelector OnWorkbookSelected="HandleWorkbookSelected" />
-        
-        @if (Session.CurrentContext != null && Session.CurrentContext.IsValid)
-        {
-            <div class="workbook-info">
-                <h4>Loaded Workbook</h4>
-                <p class="workbook-name">📄 @Session.CurrentContext.WorkbookName</p>
-                @if (Session.CurrentContext.Metadata != null)
-                {
-                    <div class="workbook-details">
-                        <p><strong>Sheets:</strong> @Session.CurrentContext.Metadata.Worksheets.Count</p>
-                        <ul class="sheet-list">
-                            @foreach (var sheet in Session.CurrentContext.Metadata.Worksheets.Take(5))
-                            {
-                                <li>@sheet.Name</li>
-                            }
-                            @if (Session.CurrentContext.Metadata.Worksheets.Count > 5)
-                            {
-                                <li class="more-indicator">... and @(Session.CurrentContext.Metadata.Worksheets.Count - 5) more</li>
-                            }
-                        </ul>
-                    </div>
-                }
-                <button class="btn btn-secondary btn-small" @onclick="HandleClearHistory">
-                    Clear History
-                </button>
-            </div>
-        }
-
-        @if (suggestedQueries.Any())
-        {
-            <div class="suggested-queries">
-                <h4>Suggested Questions</h4>
-                <ul class="suggestions-list">
-                    @foreach (var suggestion in suggestedQueries)
-                    {
-                        <li>
-                            <button class="suggestion-button" @onclick="() => UseSuggestion(suggestion)">
-                                @suggestion
-                            </button>
-                        </li>
-                    }
-                </ul>
-            </div>
-        }
     </div>
 </div>
 
@@ -128,6 +123,9 @@
     private string loadingMessage = "Processing...";
     private List<string> suggestedQueries = new();
     private CancellationTokenSource? cancellationTokenSource;
+    
+    // Computed property for workbook readiness
+    private bool IsWorkbookReady => Session.CurrentContext != null && Session.CurrentContext.IsValid;
 
     protected override async Task OnInitializedAsync()
     {
@@ -147,6 +145,9 @@
 
             var context = await AgentService.LoadWorkbookAsync(filePath, Session, cancellationTokenSource.Token);
             
+            // Debug output
+            Console.WriteLine($"DEBUG: Context loaded - IsValid: {context.IsValid}, Session.CurrentContext IsValid: {Session.CurrentContext?.IsValid ?? false}");
+            
             if (context.IsValid)
             {
                 // Add success message to conversation
@@ -161,6 +162,9 @@
                 Session.ConversationHistory.Add(successTurn);
                 
                 await LoadSuggestedQueries();
+                
+                // Force UI update after session state change
+                StateHasChanged();
             }
             else
             {
@@ -198,7 +202,7 @@
 
     private async Task HandleQuerySubmit()
     {
-        if (string.IsNullOrWhiteSpace(currentQuery) || Session.CurrentContext == null || !Session.CurrentContext.IsValid)
+        if (string.IsNullOrWhiteSpace(currentQuery) || !IsWorkbookReady)
         {
             return;
         }
