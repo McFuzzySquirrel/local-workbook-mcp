@@ -8,18 +8,17 @@ namespace ExcelMcp.ChatWeb.Services.Agent;
 /// <summary>
 /// Manages conversation history and context window for the agent.
 /// Maintains a rolling window of the last N turns for LLM context.
+/// Uses the WorkbookSession to store conversation history.
 /// </summary>
 public class ConversationManager : IConversationManager
 {
     private readonly ConversationOptions _options;
-    private readonly List<ConversationTurn> _fullHistory;
-    private readonly ChatHistory _contextWindow;
+    private readonly WorkbookSession _session;
 
-    public ConversationManager(IOptions<ConversationOptions> options)
+    public ConversationManager(IOptions<ConversationOptions> options, WorkbookSession session)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-        _fullHistory = new List<ConversationTurn>();
-        _contextWindow = new ChatHistory();
+        _session = session ?? throw new ArgumentNullException(nameof(session));
     }
 
     /// <summary>
@@ -40,8 +39,9 @@ public class ConversationManager : IConversationManager
             Timestamp = DateTimeOffset.UtcNow
         };
 
-        _fullHistory.Add(turn);
-        _contextWindow.AddUserMessage(message);
+        _session.ConversationHistory.Add(turn);
+        _session.ContextWindow.AddUserMessage(message);
+        _session.UpdateActivity();
 
         // Evict oldest turns if context window exceeds limit
         EvictOldTurnsIfNeeded();
@@ -66,8 +66,9 @@ public class ConversationManager : IConversationManager
             Timestamp = DateTimeOffset.UtcNow
         };
 
-        _fullHistory.Add(turn);
-        _contextWindow.AddAssistantMessage(message);
+        _session.ConversationHistory.Add(turn);
+        _session.ContextWindow.AddAssistantMessage(message);
+        _session.UpdateActivity();
 
         // Evict oldest turns if context window exceeds limit
         EvictOldTurnsIfNeeded();
@@ -93,8 +94,9 @@ public class ConversationManager : IConversationManager
             Timestamp = DateTimeOffset.UtcNow
         };
 
-        _fullHistory.Add(turn);
-        // Note: System messages are NOT added to _contextWindow
+        _session.ConversationHistory.Add(turn);
+        _session.UpdateActivity();
+        // Note: System messages are NOT added to _session.ContextWindow
         // They're for UI display only
     }
 
@@ -104,7 +106,7 @@ public class ConversationManager : IConversationManager
     /// </summary>
     public ChatHistory GetContextForLLM()
     {
-        return _contextWindow;
+        return _session.ContextWindow;
     }
 
     /// <summary>
@@ -113,7 +115,7 @@ public class ConversationManager : IConversationManager
     /// </summary>
     public List<ConversationTurn> GetFullHistory()
     {
-        return new List<ConversationTurn>(_fullHistory);
+        return new List<ConversationTurn>(_session.ConversationHistory);
     }
 
     /// <summary>
@@ -121,8 +123,8 @@ public class ConversationManager : IConversationManager
     /// </summary>
     public void Clear()
     {
-        _fullHistory.Clear();
-        _contextWindow.Clear();
+        _session.ConversationHistory.Clear();
+        _session.ContextWindow.Clear();
     }
 
     /// <summary>
@@ -136,13 +138,13 @@ public class ConversationManager : IConversationManager
         // Each "turn" is a user message + assistant response = 2 messages
         var maxMessages = maxTurns * 2;
 
-        while (_contextWindow.Count > maxMessages)
+        while (_session.ContextWindow.Count > maxMessages)
         {
             // Remove the oldest 2 messages (1 user + 1 assistant)
-            _contextWindow.RemoveAt(0);
-            if (_contextWindow.Count > 0)
+            _session.ContextWindow.RemoveAt(0);
+            if (_session.ContextWindow.Count > 0)
             {
-                _contextWindow.RemoveAt(0);
+                _session.ContextWindow.RemoveAt(0);
             }
         }
     }

@@ -177,9 +177,9 @@ public class ExcelAgentService : IExcelAgentService
             // Add user message to conversation
             _conversationManager.AddUserTurn(query, correlationId);
 
-            // Create timeout cancellation token (30 seconds)
+            // Create timeout cancellation token from config
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(_skOptions.TimeoutSeconds));
 
             // Get conversation context for LLM
             var chatHistory = _conversationManager.GetContextForLLM();
@@ -227,11 +227,33 @@ Do NOT describe the data or reformat it as markdown. Present the actual data in 
                 MaxTokens = 2048
             };
 
-            var result = await chatService.GetChatMessageContentAsync(
-                chatHistory,
-                executionSettings: executionSettings,
-                kernel: _kernel,
-                cancellationToken: timeoutCts.Token);
+            ChatMessageContent result;
+            try
+            {
+                result = await chatService.GetChatMessageContentAsync(
+                    chatHistory,
+                    executionSettings: executionSettings,
+                    kernel: _kernel,
+                    cancellationToken: timeoutCts.Token);
+            }
+            catch (Exception ex) when (
+                (ex is NullReferenceException || ex is ArgumentOutOfRangeException) && 
+                (ex.StackTrace?.Contains("get_Refusal") ?? false))
+            {
+                // Known issue: OpenAI SDK expects a 'refusal' field that LM Studio doesn't return
+                // Provide helpful error message
+                _conversationManager.AddSystemMessage(
+                    "❌ Error: Your LM Studio server is not returning OpenAI-compatible responses.\n\n" +
+                    "**To fix this:**\n" +
+                    "1. In LM Studio, go to the **Developer** tab\n" +
+                    "2. Look for **'Response format'** or **'OpenAI compatibility'** settings\n" +
+                    "3. Enable full OpenAI API compatibility\n" +
+                    "4. Restart the LM Studio server\n\n" +
+                    "Alternatively, try using a different model or updating LM Studio to the latest version.");
+                
+                throw new InvalidOperationException(
+                    "LM Studio compatibility issue - see chat for details", ex);
+            }
 
             var responseContent = result.Content ?? "No response generated.";
             var duration = DateTimeOffset.UtcNow - startTime;
@@ -264,9 +286,10 @@ Do NOT describe the data or reformat it as markdown. Present the actual data in 
         }
         catch (OperationCanceledException)
         {
-            // Timeout (30 seconds)
-            _logger.LogError(correlationId, new TimeoutException("Query timeout"), "Query timed out after 30 seconds");
-            return CreateErrorResponse(correlationId, new TimeoutException("Query timed out after 30 seconds"));
+            // Timeout
+            var timeoutMessage = $"Query timed out after {_skOptions.TimeoutSeconds} seconds";
+            _logger.LogError(correlationId, new TimeoutException("Query timeout"), timeoutMessage);
+            return CreateErrorResponse(correlationId, new TimeoutException(timeoutMessage));
         }
         catch (Exception ex)
         {

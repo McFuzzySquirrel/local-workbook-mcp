@@ -65,10 +65,13 @@ builder.Services.AddSingleton(serviceProvider =>
     var kernelBuilder = Kernel.CreateBuilder();
     
     // Add OpenAI chat completion for local LLM (LM Studio, Ollama, etc.)
+    // Use HttpClient to bypass OpenAI SDK's strict response validation
+    var httpClient = new HttpClient();
     kernelBuilder.AddOpenAIChatCompletion(
         modelId: skOptions.Model,
         apiKey: skOptions.ApiKey,
-        endpoint: new Uri(skOptions.BaseUrl));
+        endpoint: new Uri(skOptions.BaseUrl),
+        httpClient: httpClient);
     
     // Add plugins
     kernelBuilder.Plugins.AddFromObject(serviceProvider.GetRequiredService<WorkbookStructurePlugin>());

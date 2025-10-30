@@ -278,28 +278,30 @@ body {
 
 /* Chat Container Layout */
 .chat-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 320px minmax(500px, 1fr); /* Sidebar 320px fixed, chat min 500px */
     gap: 2rem;
-    flex: 1;
     height: calc(100vh - 200px);
+    width: 100%;
+    overflow-x: auto; /* Allow horizontal scroll if needed */
 }
 
 .chat-sidebar {
-    width: 320px;
+    grid-column: 1;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    flex-shrink: 0;
 }
 
 .chat-main {
-    flex: 1;
+    grid-column: 2;
     display: flex;
     flex-direction: column;
     background: rgba(15, 23, 42, 0.6);
     border-radius: 16px;
     border: 1px solid rgba(71, 85, 105, 0.4);
     overflow: hidden;
+    min-height: 500px;
 }
 
 /* Workbook Selector */
@@ -506,12 +508,14 @@ body {
 
 /* Messages Container */
 .messages-container {
-    flex: 1;
+    flex: 1 1 auto;
     overflow-y: auto;
     padding: 2rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    min-height: 0; /* Allow shrinking below content size */
+    max-height: calc(100% - 100px); /* Reserve space for input */
 }
 
 .messages-container::-webkit-scrollbar {
@@ -660,7 +664,10 @@ body {
 .input-container {
     border-top: 1px solid rgba(71, 85, 105, 0.4);
     padding: 1.5rem 2rem;
-    background: rgba(15, 23, 42, 0.8);
+    background: rgba(15, 23, 42, 0.9);
+    flex-shrink: 0; /* Prevent input from being squeezed out */
+    position: relative; /* Ensure proper stacking */
+    z-index: 10; /* Keep above other elements */
 }
 
 .query-form {
@@ -837,15 +844,20 @@ body {
 /* Responsive Design */
 @media (max-width: 1024px) {
     .chat-container {
-        flex-direction: column;
+        grid-template-columns: 1fr; /* Single column on mobile */
+        grid-template-rows: auto auto; /* Two rows */
         height: auto;
+        gap: 1rem;
     }
     
     .chat-sidebar {
-        width: 100%;
+        grid-column: 1;
+        grid-row: 1; /* Sidebar first on mobile */
     }
     
     .chat-main {
-        min-height: 500px;
+        grid-column: 1;
+        grid-row: 2; /* Chat second on mobile */
+        min-height: 60vh;
     }
 }
