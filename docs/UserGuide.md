@@ -1,43 +1,41 @@
 # Excel MCP User Guide
 
-This guide covers how to use the Excel MCP system, including the web chat UI, CLI client, and MCP server. It walks through setup, common workflows, and troubleshooting.
+This guide covers how to use the Excel MCP system, focusing on the **Semantic Kernel CLI agent** and **MCP server/client tools**. 
+
+**Note:** The web chat UI is currently experimental and under development. This guide focuses on production-ready CLI tools.
 
 ## Prerequisites
 
 - .NET 9.0 SDK (for building from source) or self-contained executables from the distribution
-- A local LLM server for the chat UI (e.g., [LM Studio](https://lmstudio.ai/))
-- Excel workbook files (`.xlsx` or `.xls`)
+- A local LLM server for the SK agent (e.g., [LM Studio](https://lmstudio.ai/), Ollama)
+- Excel workbook files (`.xlsx` format)
 
-## Getting Started with the Web UI
+## Getting Started with the Semantic Kernel CLI Agent (Recommended)
 
-The web chat UI provides the easiest way to interact with your Excel workbooks using natural language.
+The SK agent provides an AS/400-style terminal interface for conversational workbook analysis.
 
 ### 1. Start Your Local LLM Server
 
-The chat UI requires an OpenAI-compatible API endpoint. The easiest option is LM Studio:
+The SK agent requires an OpenAI-compatible API endpoint. Recommended options:
 
+**Option A: LM Studio (Easiest)**
 1. Download and install [LM Studio](https://lmstudio.ai/)
-2. Download a model (recommended: `phi-4-mini-reasoning` or similar small reasoning model)
+2. Download a model (recommended: `phi-4`, `llama-3.1-8b-instruct`, or `gpt-4` compatible)
 3. Load the model and start the local server
-4. Verify it's running on `http://localhost:1234` (or note your custom URL)
+4. Verify it's running on `http://localhost:1234`
 
-### 2. Configure the Chat Web App (Optional)
-
-If your LLM server runs on a different URL or you want to use a different model, edit `src/ExcelMcp.ChatWeb/appsettings.json`:
-
-```json
-{
-  "LlmStudio": {
-    "BaseUrl": "http://localhost:1234/v1",
-    "Model": "phi-4-mini-reasoning"
-  },
-  "ExcelMcp": {
-    "ServerPath": "path/to/ExcelMcp.Server.exe"
-  }
-}
+**Option B: Ollama**
+```bash
+ollama serve
+ollama run llama3.2
 ```
 
-The `ServerPath` is auto-detected if you're running from source. For distributions, the launcher scripts set this automatically.
+**Option C: OpenAI API**
+Set your API key in environment variables (see Configuration section below).
+
+### 2. Configure the SK Agent (Optional)
+
+The agent uses sensible defaults, but you can customize via environment variables:
 
 ### 3. Launch the Web UI
 
