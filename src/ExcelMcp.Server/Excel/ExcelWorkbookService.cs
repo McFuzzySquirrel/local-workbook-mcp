@@ -5,7 +5,7 @@ using ExcelMcp.Server.Mcp;
 
 namespace ExcelMcp.Server.Excel;
 
-internal sealed class ExcelWorkbookService
+public sealed class ExcelWorkbookService
 {
     private const int DefaultPreviewRowCount = 20;
 
@@ -216,7 +216,7 @@ internal sealed class ExcelWorkbookService
 
     private static bool WorksheetMatches(string worksheetName, string? requestedWorksheet, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
     {
-        if (requestedWorksheet is null)
+        if (string.IsNullOrWhiteSpace(requestedWorksheet))
         {
             return true;
         }
@@ -231,7 +231,7 @@ internal sealed class ExcelWorkbookService
 
     private static bool TableMatches(string tableName, string? requestedTable, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
     {
-        if (requestedTable is null)
+        if (string.IsNullOrWhiteSpace(requestedTable))
         {
             return true;
         }

@@ -3,9 +3,23 @@ May cause breaking changes
 
 # Excel Local MCP
 
-Local Model Context Protocol server, CLI client, and chat web UI for working with on-disk Excel workbooks. The server exposes worksheet metadata, table previews, and search capabilities via MCP tools and resources. Everything runs locally, ships with self-contained binaries, and exposes a consistent MCP surface so agents can inspect spreadsheets without uploading them.
+Local Model Context Protocol server and CLI tools for conversational analysis of Excel workbooks. Chat with your spreadsheets using natural language - ask questions, search data, preview tables, and switch between workbooks without leaving the terminal.
 
-> Need the full walkthrough? See [docs/UserGuide.md](docs/UserGuide.md).
+**🚀 Current Status:** Production-ready CLI tools with debug logging, workbook switching, and AS/400-style terminal interface. Web UI is experimental.
+
+## Features
+
+✅ **Semantic Kernel CLI Agent** - AS/400-style terminal for conversational workbook queries  
+✅ **Debug Logging** - See exactly which tools the LLM calls and when  
+✅ **Workbook Switching** - Load different workbooks without restarting  
+✅ **MCP Server** - Standards-compliant Model Context Protocol server  
+✅ **Sample Workbooks** - Realistic test data (projects, employees, budgets)  
+✅ **Local-First** - Everything runs on your machine, data never leaves  
+✅ **Cross-Platform** - Windows, Linux, macOS via .NET 9  
+
+> **Quick Start:** Jump to [Getting Started](#getting-started) to run in 3 minutes.
+
+---
 
 ## Why This Exists
 
@@ -31,12 +45,21 @@ See the evolving roadmap in [docs/FutureFeatures.md](docs/FutureFeatures.md). Hi
 
 ## Components
 
-- `src/ExcelMcp.Server` – Stdio JSON-RPC MCP server that indexes a workbook.
-- `src/ExcelMcp.Client` – Command-line tool that starts the server and calls MCP tools/resources.
-- `src/ExcelMcp.ChatWeb` – ASP.NET front end that talks to the server and renders the chat UI.
-- `src/ExcelMcp.Contracts` – Shared data contracts.
-- `docs/UserGuide.md` – Extended walkthrough covering setup, workflows, and troubleshooting.
-- `docs/FutureFeatures.md` – Forward-looking ideas we plan to explore.
+### Production-Ready
+- **`src/ExcelMcp.Server`** – Stdio JSON-RPC MCP server that indexes a workbook
+- **`src/ExcelMcp.Client`** – Command-line tool that starts the server and calls MCP tools/resources
+- **`src/ExcelMcp.SkAgent`** – Semantic Kernel CLI agent with AS/400-style terminal interface for conversational workbook analysis (includes debug logging, workbook switching, and colorized output)
+- **`src/ExcelMcp.Contracts`** – Shared data contracts
+
+### Documentation
+- **`docs/UserGuide.md`** – Extended walkthrough covering setup, workflows, and troubleshooting
+- **`docs/FutureFeatures.md`** – Forward-looking ideas we plan to explore
+- **`docs/SkAgentQuickStart.md`** – Quick start guide for the Semantic Kernel agent
+- **`docs/SkAgentDebugLog.md`** – Debug logging feature documentation
+- **`test-data/README.md`** – Sample workbooks and testing guide
+
+### Under Development
+- **`src/ExcelMcp.ChatWeb`** – ASP.NET web UI for chat interface (experimental, not feature-complete)
 
 ## Prerequisites
 
@@ -53,35 +76,39 @@ dotnet test
 
 ## Quick Starts
 
-> **Note:** The chat web app requires a local LLM server running on `http://localhost:1234` (e.g., [LM Studio](https://lmstudio.ai/) with a model loaded). The app has been tested with `phi-4-mini-reasoning` but should work with any OpenAI-compatible endpoint. Update `LlmStudio:BaseUrl` and `LlmStudio:Model` in `appsettings.json` to match your setup.
+### Semantic Kernel CLI Agent (Recommended)
 
-### Running the Web UI (Recommended)
-
-The web UI provides a chat interface where you can upload Excel files and ask questions about them:
+The SK agent provides a classic AS/400-style terminal interface with conversational AI, debug logging, and workbook switching:
 
 ```pwsh
 # 1. Start your local LLM server (e.g., LM Studio on port 1234)
 
-# 2. Run the web app
-dotnet run --project src/ExcelMcp.ChatWeb
+# 2. Create sample workbooks (optional)
+pwsh -File scripts/create-sample-workbooks.ps1
 
-# 3. Open http://localhost:5000 in your browser
+# 3. Run the agent
+dotnet run --project src/ExcelMcp.SkAgent -- --workbook "test-data/ProjectTracking.xlsx"
 
-# 4. Click "Choose Excel file..." to upload a workbook
-
-# 5. Ask questions like:
-#    - "What sheets are in this workbook?"
-#    - "Show me the first 10 rows of the Sales table"
-#    - "Search for Laptop in the workbook"
+# 4. Chat with your workbook:
+> what tables exist in this workbook?
+> show me all high priority tasks
+> load test-data/EmployeeDirectory.xlsx
+> who works in Engineering?
+> exit
 ```
 
-The web app automatically:
-- Starts the MCP server when you load a workbook
-- Calls the appropriate MCP tools based on your questions
-- Renders table data as HTML tables
-- Maintains conversation history
+**Features:**
+- ✅ Green colorized terminal UI
+- ✅ Debug logging shows tool calls
+- ✅ Switch workbooks without restarting (`load`, `open`, `switch` commands)
+- ✅ Case-insensitive search
+- ✅ Works with local LLMs (LM Studio, Ollama) or OpenAI
 
-### Running the CLI Client
+**See:** [docs/SkAgentQuickStart.md](docs/SkAgentQuickStart.md) for detailed guide.
+
+### MCP Server and CLI Client
+
+For direct MCP protocol interaction or programmatic access:
 
 ```pwsh
 # Use the CLI client (prompts for workbook path on first run)
@@ -91,6 +118,8 @@ dotnet run --project src/ExcelMcp.Client -- preview Sales --rows 10
 ```
 
 ### Running the MCP Server Directly
+
+For integration with other MCP-compatible clients:
 
 ```pwsh
 # Run the stdio MCP server directly
@@ -122,14 +151,21 @@ dotnet run --project src/ExcelMcp.Server -- --workbook "D:/Data/sample.xlsx"
 }
 ```
 
-## Sample Client
+## Packaging
 
-Each app has a dedicated packaging script that publishes single-file executables, copies launch helpers, and writes a README into `dist/<rid>/<AppName>`:
+Package each component as a self-contained, single-file executable:
 
 ```pwsh
-pwsh -File scripts/package-server.ps1   # ExcelMcp.Server
-pwsh -File scripts/package-client.ps1   # ExcelMcp.Client
+pwsh -File scripts/package-server.ps1   # MCP Server
+pwsh -File scripts/package-client.ps1   # CLI Client
+pwsh -File scripts/package-skagent.ps1  # Semantic Kernel Agent (Recommended!)
+```
+
+Each script publishes to `dist/<rid>/<AppName>` with platform-specific launch helpers (`.ps1`, `.sh`, `.bat`).
+
+**Note:** The web chat (`package-chatweb.ps1`) is experimental and not feature-complete.
 pwsh -File scripts/package-chatweb.ps1  # ExcelMcp.ChatWeb (includes wwwroot)
+pwsh -File scripts/package-skagent.ps1  # ExcelMcp.SkAgent (Semantic Kernel terminal agent)
 ```
 
 Pass `-Runtime` (e.g., `linux-x64`) or `-SkipZip` as needed. The generated folders include `run-*.ps1`, `run-*.sh`, and `run-*.bat` wrappers that prompt for workbook/server paths and start the bundled executable.
@@ -137,6 +173,80 @@ Pass `-Runtime` (e.g., `linux-x64`) or `-SkipZip` as needed. The generated folde
 ## Integrate with Agents
 
 Point your MCP-capable agent at the packaged server or use the CLI/web app launchers to negotiate workbook/server paths. All tools (`excel-list-structure`, `excel-search`, `excel-preview-table`) and resources (`excel://` URIs) follow the MCP spec, so they work with OpenAI agents, MCP bridges, or any compatible orchestrator.
+
+## Getting Started
+
+### 1. Build the Project
+```pwsh
+dotnet build
+dotnet test
+```
+
+### 2. Create Sample Workbooks
+```pwsh
+pwsh -File scripts/create-sample-workbooks.ps1
+```
+
+This creates three test workbooks in `test-data/`:
+- **ProjectTracking.xlsx** - Tasks, projects, time logs
+- **EmployeeDirectory.xlsx** - Employee and department data
+- **BudgetTracker.xlsx** - Income and expense tracking
+
+See [test-data/README.md](test-data/README.md) for details and example queries.
+
+### 3. Run the Semantic Kernel Agent
+```pwsh
+# With a local LLM (recommended: LM Studio, Ollama)
+dotnet run --project src/ExcelMcp.SkAgent -- --workbook test-data/ProjectTracking.xlsx
+
+# Or set environment variables
+$env:LLM_BASE_URL = "http://localhost:1234/v1"
+$env:LLM_MODEL_ID = "local-model"
+$env:EXCEL_MCP_WORKBOOK = "test-data/ProjectTracking.xlsx"
+dotnet run --project src/ExcelMcp.SkAgent
+```
+
+### 4. Try It Out
+```
+> what tasks are high priority?
+> show me all employees in Engineering
+> load test-data/BudgetTracker.xlsx
+> what's the total income?
+> help
+```
+
+**Key Features to Explore:**
+- 🔧 **Debug logging** - See exactly which tools the LLM calls
+- 🔄 **Workbook switching** - Use `load`, `open`, or `switch` commands
+- 🎨 **Colorized output** - Green banner, color-coded messages
+- 📊 **Sample workbooks** - Realistic test data included
+
+## Documentation
+
+- **[User Guide](docs/UserGuide.md)** - Complete setup and workflow guide
+- **[SK Agent Quick Start](docs/SkAgentQuickStart.md)** - CLI agent tutorial
+- **[Debug Logging](docs/SkAgentDebugLog.md)** - Understanding tool calls
+- **[Sample Workbooks](test-data/README.md)** - Test data reference
+- **[Future Features](docs/FutureFeatures.md)** - Planned enhancements
+
+## Troubleshooting
+
+Common issues and solutions:
+
+**LLM not calling tools / making up data:**
+- See [docs/SkAgentTroubleshooting.md](docs/SkAgentTroubleshooting.md)
+- Try better models: `gpt-4`, `phi-4`, `llama-3.1-8b-instruct`
+- Check debug log: `⚠️ No tools were called` means model issue
+
+**Search returning no results:**
+- Fixed! Empty string bug resolved
+- Search is case-insensitive by default
+- Debug log shows: `caseSensitive=False`
+
+**Wrong calculations:**
+- Model limitation - local models may struggle with math
+- Debug log shows tool calls but incorrect computation
+- Use GPT-4 for accurate calculations
 
 Refer to [docs/UserGuide.md](docs/UserGuide.md) for detailed workflow examples, environment variables, and troubleshooting notes.
 
