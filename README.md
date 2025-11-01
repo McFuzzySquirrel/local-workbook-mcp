@@ -10,7 +10,7 @@ Local Model Context Protocol server and CLI tools for conversational analysis of
 
 ### CLI Agent
 
-![CLI Screenshot](docs/cli-screenshot.png)
+![CLI Screenshot](docs/cli-screenshot.jpeg)
 
 ### Web Chat UI
 
