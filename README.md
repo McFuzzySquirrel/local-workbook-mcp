@@ -10,26 +10,7 @@ Local Model Context Protocol server and CLI tools for conversational analysis of
 
 ### CLI Agent
 
-![CLI Screenshot](docs/cli-screenshot.svg)
-
-*The CLI uses colored gradients (green → chartreuse) to create a visually appealing terminal experience*
-
-```
-██╗      ██████╗  ██████╗ █████╗ ██╗     ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗  ██████╗██╗  ██╗ █████╗ ████████╗
-██║     ██╔═══██╗██╔════╝██╔══██╗██║     ██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝ ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
-██║     ██║   ██║██║     ███████║██║     ██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝  ██║     ███████║███████║   ██║   
-██║     ██║   ██║██║     ██╔══██║██║     ██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗  ██║     ██╔══██║██╔══██║   ██║   
-███████╗╚██████╔╝╚██████╗██║  ██║███████╗╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗ ╚██████╗██║  ██║██║  ██║   ██║   
-╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝ ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
-
-AI-powered spreadsheet analysis - Private, Fast, Terminal-based
-
-Workbook:       ProjectTracking.xlsx (10KB)
-AI Model:       qwen2.5-1.5b-instruct
-Commands:       help | load <path> | clear | exit
-
-> what sheets are in this workbook?
-```
+![CLI Screenshot](docs/cli-screenshot.png)
 
 ### Web Chat UI
 
