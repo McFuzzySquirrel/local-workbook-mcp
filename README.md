@@ -1,5 +1,4 @@
-# NOTE: Changes still in progress
-May cause breaking changes
+## NOTE: This is a work in progress
 
 # Excel Local MCP
 
