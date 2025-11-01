@@ -1,8 +1,12 @@
-# Excel MCP User Guide
+# Excel Local MCP - User Guide
 
-This guide covers how to use the Excel MCP system, focusing on the **Semantic Kernel CLI agent** and **MCP server/client tools**. 
+**Last Updated:** November 1, 2025
 
-**Note:** The web chat UI is currently experimental and under development. This guide focuses on production-ready CLI tools.
+This guide covers setup, workflows, and troubleshooting for the Excel Local MCP project.
+
+**Status:** 
+- ✅ **CLI Agent** - Stable, well-tested, recommended for daily use
+- ⚠️ **Web Chat** - Functional, needs validation testing before broad use
 
 ## Prerequisites
 
@@ -598,6 +602,54 @@ client = ExcelMCPClient("./ExcelMcp.Server.exe", "data.xlsx")
 structure = client.list_structure()
 print(f"Workbook has {len(structure['worksheets'])} sheets")
 ```
+
+---
+
+## Using the Web Chat Interface (Work in Progress)
+
+**Status:** Functional but needs validation testing. Use CLI agent for critical work.
+
+### Prerequisites
+- .NET 9.0 SDK
+- Local LLM server (LM Studio, Ollama) on port 1234
+- Modern web browser
+- For Linux: `libgdiplus` package (`sudo apt install libgdiplus`)
+
+### Quick Start
+
+**Linux/Raspberry Pi:**
+```bash
+./run-chatweb.sh
+# Opens on http://localhost:5001
+```
+
+**Windows:**
+```pwsh
+dotnet run --project src/ExcelMcp.ChatWeb
+# Opens on http://localhost:5000
+```
+
+### Using the Interface
+
+1. **Load Workbook** - Click "📁 Choose Excel file..." and select .xlsx file
+2. **Ask Questions** - Type in chat input (e.g., "Show me the first 10 rows")
+3. **View Tables** - Data renders as formatted HTML tables
+4. **Switch Workbooks** - Load different files without restarting
+5. **Clear History** - Reset conversation, keep workbook
+
+### Features
+- ✅ Workbook-agnostic prompts (same as CLI)
+- ✅ HTML table rendering
+- ✅ Linux/Raspberry Pi support (ARM64)
+- ✅ Conversation history
+- ✅ Suggested queries
+
+### Troubleshooting
+- **Port conflict:** Use `ASPNETCORE_URLS="http://localhost:5001"`
+- **Linux:** Install `libgdiplus` if Excel loading fails
+- **More help:** See [WEB-CHAT-ROADMAP.md](../WEB-CHAT-ROADMAP.md)
+
+---
 
 ## Known Limitations
 

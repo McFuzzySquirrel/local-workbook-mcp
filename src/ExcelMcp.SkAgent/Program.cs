@@ -29,6 +29,9 @@ if (config is null)
     };
 }
 
+// Try to detect actual running model
+string actualModel = await DetectRunningModel(config.BaseUrl);
+
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
 {
@@ -96,7 +99,7 @@ REMEMBER: You CAN see the data. Just call the tools! Start with get_workbook_sum
 
 // Render initial display
 AnsiConsole.Clear();
-RenderHeader(workbookPath, config.ModelId);
+RenderHeader(workbookPath, config.ModelId, actualModel);
 
 while (!cts.Token.IsCancellationRequested)
 {
@@ -119,7 +122,7 @@ while (!cts.Token.IsCancellationRequested)
     if (command is "clear" or "cls")
     {
         AnsiConsole.Clear();
-        RenderHeader(workbookPath, config.ModelId);
+        RenderHeader(workbookPath, config.ModelId, actualModel);
         continue;
     }
 
@@ -214,7 +217,7 @@ WRONG BEHAVIOR - NEVER DO THIS:
 REMEMBER: You CAN see the data. Just call the tools! Start with get_workbook_summary if unsure.");
 
             AnsiConsole.Clear();
-            RenderHeader(workbookPath, config.ModelId);
+            RenderHeader(workbookPath, config.ModelId, actualModel);
             
             var successPanel = new Panel($"[green bold]✓[/] Successfully loaded [yellow bold]{Path.GetFileName(workbookPath)}[/]")
                 .Border(BoxBorder.Rounded)
@@ -300,52 +303,86 @@ REMEMBER: You CAN see the data. Just call the tools! Start with get_workbook_sum
 AnsiConsole.MarkupLine("[cyan]Session ended.[/]");
 return 0;
 
-static void RenderHeader(string workbookPath, string modelId)
+static void RenderHeader(string workbookPath, string configuredModel, string actualModel)
 {
-    var grid = new Grid();
-    grid.AddColumn();
+    // Left-aligned banner, no border - cleaner look
+    AnsiConsole.WriteLine();
     
-    // ASCII art banner
-    grid.AddRow(new Markup("[green bold]  ___  __  __  ___  ___  _       __  __   ___  ___  [/]"));
-    grid.AddRow(new Markup("[green bold] | __| \\ \\/ / / __|| __|| |     |  \\/  | / __|| _ \\ [/]"));
-    grid.AddRow(new Markup("[green bold] | _|   >  < | (__ | _| | |__   | |\\/| || (__ |  _/ [/]"));
-    grid.AddRow(new Markup("[green bold] |___| /_/\\_\\ \\___||___||____|  |_|  |_| \\___||_|   [/]"));
-    grid.AddRow(new Markup(""));
-    grid.AddRow(new Markup("[dim]Local AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]"));
-    grid.AddRow(new Markup(""));
+    // Single line title - "LOCAL WORKBOOK CHAT" using block characters
+    AnsiConsole.MarkupLine("[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗     [/][green3 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/][chartreuse1 bold]  ██████╗██╗  ██╗ █████╗ ████████╗[/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║     [/][green3 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/][chartreuse1 bold] ██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ███████║██║     [/][green3 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/][chartreuse1 bold] ██║     ███████║███████║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ██╔══██║██║     [/][green3 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/][chartreuse1 bold] ██║     ██╔══██║██╔══██║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗[/][green3 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/][chartreuse1 bold] ╚██████╗██║  ██║██║  ██║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝[/][green3 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/][chartreuse1 bold]  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]");
     
-    // Session info table
+    AnsiConsole.WriteLine();
+    AnsiConsole.MarkupLine("[dim italic]AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]");
+    AnsiConsole.WriteLine();
+    
+    // Session info - simple table, no border
     var infoTable = new Table()
         .HideHeaders()
+        .Border(TableBorder.None)
         .AddColumn(new TableColumn("").Width(15))
         .AddColumn(new TableColumn(""));
-    
-    infoTable.Border = TableBorder.None;
     
     infoTable.AddRow(
         new Markup("[dim]Workbook:[/]"),
         new Markup($"[yellow bold]{Path.GetFileName(workbookPath)}[/] [dim]({new FileInfo(workbookPath).Length / 1024}KB)[/]")
     );
     
-    infoTable.AddRow(
-        new Markup("[dim]AI Model:[/]"),
-        new Markup($"[cyan bold]{modelId}[/]")
-    );
+    // Show actual running model or warning
+    if (!string.IsNullOrEmpty(actualModel) && actualModel != "unknown")
+    {
+        infoTable.AddRow(
+            new Markup("[dim]AI Model:[/]"),
+            new Markup($"[cyan bold]{actualModel}[/]")
+        );
+    }
+    else
+    {
+        infoTable.AddRow(
+            new Markup("[dim]AI Model:[/]"),
+            new Markup($"[red bold]⚠ Please start LLM server on port 1234[/]")
+        );
+    }
     
     infoTable.AddRow(
         new Markup("[dim]Commands:[/]"),
         new Markup("[green]help[/] [dim]|[/] [green]load[/] [dim]<path>[/] [dim]|[/] [green]clear[/] [dim]|[/] [green]exit[/]")
     );
     
-    grid.AddRow(infoTable);
-    
-    var panel = new Panel(grid)
-        .Border(BoxBorder.Double)
-        .BorderColor(Color.Green)
-        .Padding(1, 0);
-    
-    AnsiConsole.Write(panel);
+    AnsiConsole.Write(infoTable);
     AnsiConsole.WriteLine();
+}
+
+static async Task<string> DetectRunningModel(string baseUrl)
+{
+    try
+    {
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        var modelsUrl = baseUrl.Replace("/v1", "") + "/v1/models";
+        
+        var response = await httpClient.GetStringAsync(modelsUrl);
+        
+        // Parse JSON to get model name
+        if (response.Contains("\"id\""))
+        {
+            var idStart = response.IndexOf("\"id\"") + 6;
+            var idEnd = response.IndexOf("\"", idStart);
+            if (idEnd > idStart)
+            {
+                return response.Substring(idStart, idEnd - idStart);
+            }
+        }
+        
+        return "unknown";
+    }
+    catch
+    {
+        return "unknown";
+    }
 }
 
 static void ShowHelp()
