@@ -305,31 +305,37 @@ return 0;
 
 static void RenderHeader(string workbookPath, string configuredModel, string actualModel)
 {
+    // Fixed width for modern terminals (100 chars)
+    const int bannerWidth = 100;
+    
     var grid = new Grid();
-    grid.AddColumn();
+    grid.AddColumn(new GridColumn().Width(bannerWidth));
     
-    // Chunkier title using block characters
+    // Chunkier title using block characters - centered for wider display
+    var titlePadding = (bannerWidth - 72) / 2; // 72 is approx width of "WORKBOOK" line
+    var pad = new string(' ', Math.Max(0, titlePadding));
+    
     grid.AddRow(new Markup(""));
-    grid.AddRow(new Markup("[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗         [/]"));
-    grid.AddRow(new Markup("[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║         [/]"));
-    grid.AddRow(new Markup("[green1 bold]██║     ██║   ██║██║     ███████║██║         [/]"));
-    grid.AddRow(new Markup("[green1 bold]██║     ██║   ██║██║     ██╔══██║██║         [/]"));
-    grid.AddRow(new Markup("[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗    [/]"));
-    grid.AddRow(new Markup("[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝    [/]"));
+    grid.AddRow(new Markup($"{pad}[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗         [/]"));
+    grid.AddRow(new Markup($"{pad}[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║         [/]"));
+    grid.AddRow(new Markup($"{pad}[green1 bold]██║     ██║   ██║██║     ███████║██║         [/]"));
+    grid.AddRow(new Markup($"{pad}[green1 bold]██║     ██║   ██║██║     ██╔══██║██║         [/]"));
+    grid.AddRow(new Markup($"{pad}[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗    [/]"));
+    grid.AddRow(new Markup($"{pad}[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝    [/]"));
     
-    grid.AddRow(new Markup("[green3 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/]"));
-    grid.AddRow(new Markup("[green3 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/]"));
-    grid.AddRow(new Markup("[green3 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/]"));
-    grid.AddRow(new Markup("[green3 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/]"));
-    grid.AddRow(new Markup("[green3 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/]"));
-    grid.AddRow(new Markup("[green3 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/]"));
+    grid.AddRow(new Markup($"{pad}[green3 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/]"));
+    grid.AddRow(new Markup($"{pad}[green3 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/]"));
+    grid.AddRow(new Markup($"{pad}[green3 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/]"));
+    grid.AddRow(new Markup($"{pad}[green3 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/]"));
+    grid.AddRow(new Markup($"{pad}[green3 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/]"));
+    grid.AddRow(new Markup($"{pad}[green3 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/]"));
     
-    grid.AddRow(new Markup("[chartreuse1 bold] ██████╗██╗  ██╗ █████╗ ████████╗[/]"));
-    grid.AddRow(new Markup("[chartreuse1 bold]██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]"));
-    grid.AddRow(new Markup("[chartreuse1 bold]██║     ███████║███████║   ██║   [/]"));
-    grid.AddRow(new Markup("[chartreuse1 bold]██║     ██╔══██║██╔══██║   ██║   [/]"));
-    grid.AddRow(new Markup("[chartreuse1 bold]╚██████╗██║  ██║██║  ██║   ██║   [/]"));
-    grid.AddRow(new Markup("[chartreuse1 bold] ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]"));
+    grid.AddRow(new Markup($"{pad}[chartreuse1 bold] ██████╗██╗  ██╗ █████╗ ████████╗[/]"));
+    grid.AddRow(new Markup($"{pad}[chartreuse1 bold]██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]"));
+    grid.AddRow(new Markup($"{pad}[chartreuse1 bold]██║     ███████║███████║   ██║   [/]"));
+    grid.AddRow(new Markup($"{pad}[chartreuse1 bold]██║     ██╔══██║██╔══██║   ██║   [/]"));
+    grid.AddRow(new Markup($"{pad}[chartreuse1 bold]╚██████╗██║  ██║██║  ██║   ██║   [/]"));
+    grid.AddRow(new Markup($"{pad}[chartreuse1 bold] ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]"));
     
     grid.AddRow(new Markup(""));
     grid.AddRow(new Markup("[dim italic]AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]"));
