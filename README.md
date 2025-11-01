@@ -8,6 +8,10 @@ Local Model Context Protocol server and CLI tools for conversational analysis of
 
 ### CLI Agent
 
+![CLI Screenshot](docs/cli-screenshot.svg)
+
+*The CLI uses colored gradients (green → chartreuse) to create a visually appealing terminal experience*
+
 ```
 ██╗      ██████╗  ██████╗ █████╗ ██╗     ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗  ██████╗██╗  ██╗ █████╗ ████████╗
 ██║     ██╔═══██╗██╔════╝██╔══██╗██║     ██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝ ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
@@ -38,7 +42,7 @@ Commands:       help | load <path> | clear | exit
 
 ## Features
 
-✅ **Semantic Kernel CLI Agent** - AS/400-style terminal for conversational workbook queries  
+✅ **Semantic Kernel CLI Agent** - Beautiful terminal UI powered by [Spectre.Console](https://spectreconsole.net/)  
 ✅ **Debug Logging** - See exactly which tools the LLM calls and when  
 ✅ **Workbook Switching** - Load different workbooks without restarting  
 ✅ **MCP Server** - Standards-compliant Model Context Protocol server  
@@ -251,6 +255,21 @@ Pass `-Runtime` (e.g., `linux-x64`, `linux-arm64`) or `-SkipZip` as needed.
 ## Integrate with Agents
 
 Point your MCP-capable agent at the packaged server or use the CLI/web app launchers to negotiate workbook/server paths. All tools (`excel-list-structure`, `excel-search`, `excel-preview-table`) and resources (`excel://` URIs) follow the MCP spec, so they work with OpenAI agents, MCP bridges, or any compatible orchestrator.
+
+---
+
+## Acknowledgments
+
+**Built with these amazing open-source projects:**
+
+- **[Spectre.Console](https://spectreconsole.net/)** - Beautiful, colorful CLI interfaces with rich formatting
+- **[Semantic Kernel](https://github.com/microsoft/semantic-kernel)** - Microsoft's LLM orchestration framework
+- **[ClosedXML](https://github.com/ClosedXML/ClosedXML)** - Excel file manipulation without Office dependencies
+- **[Model Context Protocol](https://modelcontextprotocol.io/)** - Anthropic's standard for AI-to-tool communication
+
+Special thanks to the Spectre.Console team for making terminal apps beautiful! 🎨
+
+---
 
 ## Getting Started
 
