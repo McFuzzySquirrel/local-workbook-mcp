@@ -305,13 +305,13 @@ static void RenderHeader(string workbookPath, string modelId)
     var grid = new Grid();
     grid.AddColumn();
     
-    // ASCII art banner
-    grid.AddRow(new Markup("[green bold]  ___  __  __  ___  ___  _       __  __   ___  ___  [/]"));
-    grid.AddRow(new Markup("[green bold] | __| \\ \\/ / / __|| __|| |     |  \\/  | / __|| _ \\ [/]"));
-    grid.AddRow(new Markup("[green bold] | _|   >  < | (__ | _| | |__   | |\\/| || (__ |  _/ [/]"));
-    grid.AddRow(new Markup("[green bold] |___| /_/\\_\\ \\___||___||____|  |_|  |_| \\___||_|   [/]"));
+    // Colored ASCII art banner - GitHub Copilot style
     grid.AddRow(new Markup(""));
-    grid.AddRow(new Markup("[dim]Local AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]"));
+    grid.AddRow(new Markup("[green1 bold] ╦   ┌─┐┌─┐┌─┐┬    [/][green3 bold] ╦ ╦┌─┐┬─┐┬┌─┌┐ ┌─┐┌─┐┬┌─ [/][chartreuse1 bold] ╔═╗┬ ┬┌─┐┌┬┐[/]"));
+    grid.AddRow(new Markup("[green1 bold] ║   │ ││  ├─┤│    [/][green3 bold] ║║║│ │├┬┘├┴┐├┴┐│ ││ │├┴┐ [/][chartreuse1 bold] ║  ├─┤├─┤ │ [/]"));
+    grid.AddRow(new Markup("[green1 bold] ╩═╝ └─┘└─┘┴ ┴┴─┘  [/][green3 bold] ╚╩╝└─┘┴└─┴ ┴└─┘└─┘└─┘┴ ┴ [/][chartreuse1 bold] ╚═╝┴ ┴┴ ┴ ┴ [/]"));
+    grid.AddRow(new Markup(""));
+    grid.AddRow(new Markup("[dim italic]AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]"));
     grid.AddRow(new Markup(""));
     
     // Session info table
@@ -339,10 +339,12 @@ static void RenderHeader(string workbookPath, string modelId)
     
     grid.AddRow(infoTable);
     
+    // Auto-expand panel to terminal width
     var panel = new Panel(grid)
         .Border(BoxBorder.Double)
         .BorderColor(Color.Green)
-        .Padding(1, 0);
+        .Padding(1, 0)
+        .Expand(); // This makes it expand to terminal width
     
     AnsiConsole.Write(panel);
     AnsiConsole.WriteLine();
