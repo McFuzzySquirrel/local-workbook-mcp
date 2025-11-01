@@ -4,7 +4,9 @@ Local Model Context Protocol server and CLI tools for conversational analysis of
 
 **🚀 Current Status:** Work in progress. CLI tools are stable and tested. Web UI is functional but needs validation testing. Both share the same robust backend (MCP + Semantic Kernel).
 
-## CLI Screenshot
+## Screenshots
+
+### CLI Agent
 
 ```
 ██╗      ██████╗  ██████╗ █████╗ ██╗     ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗  ██████╗██╗  ██╗ █████╗ ████████╗
@@ -22,6 +24,17 @@ Commands:       help | load <path> | clear | exit
 
 > what sheets are in this workbook?
 ```
+
+### Web Chat UI
+
+> 📸 Screenshot coming soon
+> 
+> *The web UI features a clean Blazor interface with:*
+> - *File upload for workbooks*
+> - *Chat-style conversation interface*
+> - *Proper HTML table rendering*
+> - *Suggested queries in sidebar*
+> - *Conversation history*
 
 ## Features
 
