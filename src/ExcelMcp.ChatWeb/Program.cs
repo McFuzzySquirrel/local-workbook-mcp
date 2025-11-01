@@ -52,6 +52,20 @@ builder.Services.AddOptions<ConversationOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// Auto-detect running model from LM Studio (like CLI does)
+var detectedModel = await DetectRunningModelAsync(builder.Configuration.GetSection("SemanticKernel")["BaseUrl"] ?? "http://localhost:1234/v1");
+if (!string.IsNullOrEmpty(detectedModel) && detectedModel != "unknown")
+{
+    Log.Information("Auto-detected running model: {ModelName}", detectedModel);
+    // Override the configured model with the detected one
+    builder.Services.Configure<SemanticKernelOptions>(options => options.Model = detectedModel);
+}
+else
+{
+    var configuredModel = builder.Configuration.GetSection("SemanticKernel")["Model"];
+    Log.Warning("Could not detect running model, using configured model: {ModelName}", configuredModel);
+}
+
 // Register plugins first
 builder.Services.AddSingleton<WorkbookStructurePlugin>();
 builder.Services.AddSingleton<WorkbookSearchPlugin>();
@@ -150,6 +164,39 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+// Auto-detect running model from LM Studio API
+static async Task<string> DetectRunningModelAsync(string baseUrl)
+{
+    try
+    {
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        var modelsUrl = baseUrl.Replace("/v1", "") + "/v1/models";
+        
+        var response = await httpClient.GetStringAsync(modelsUrl);
+        
+        // Use proper JSON parsing
+        var jsonDoc = System.Text.Json.JsonDocument.Parse(response);
+        if (jsonDoc.RootElement.TryGetProperty("data", out var dataArray))
+        {
+            if (dataArray.GetArrayLength() > 0)
+            {
+                var firstModel = dataArray[0];
+                if (firstModel.TryGetProperty("id", out var idElement))
+                {
+                    return idElement.GetString() ?? "unknown";
+                }
+            }
+        }
+        
+        return "unknown";
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to auto-detect model from {BaseUrl}", baseUrl);
+        return "unknown";
+    }
 }
 
 static void EnsureExcelMcpConfiguration(WebApplicationBuilder builder)
