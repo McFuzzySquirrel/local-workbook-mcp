@@ -264,7 +264,22 @@ REMEMBER: You CAN see the data. Just call the tools! Start with get_workbook_sum
             
             foreach (var logEntry in agent.DebugLog)
             {
-                debugTable.AddRow(new Markup($"[dim]{logEntry.EscapeMarkup()}[/]"));
+                // Add colored bullet based on success/error keywords
+                string bullet = "●";
+                string color = "yellow";
+                
+                if (logEntry.Contains("✓") || logEntry.Contains("Success") || logEntry.Contains("returned"))
+                {
+                    bullet = "●";
+                    color = "green";
+                }
+                else if (logEntry.Contains("✗") || logEntry.Contains("Error") || logEntry.Contains("Failed"))
+                {
+                    bullet = "●";
+                    color = "red";
+                }
+                
+                debugTable.AddRow(new Markup($"[{color}]{bullet}[/] [dim]{logEntry.EscapeMarkup()}[/]"));
             }
             
             AnsiConsole.Write(debugTable);
@@ -311,12 +326,13 @@ static void RenderHeader(string workbookPath, string configuredModel, string act
     AnsiConsole.WriteLine();
     
     // Single line title - "LOCAL WORKBOOK CHAT" using block characters
-    AnsiConsole.MarkupLine("[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗     [/][green3 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/][chartreuse1 bold]  ██████╗██╗  ██╗ █████╗ ████████╗[/]");
-    AnsiConsole.MarkupLine("[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║     [/][green3 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/][chartreuse1 bold] ██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]");
-    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ███████║██║     [/][green3 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/][chartreuse1 bold] ██║     ███████║███████║   ██║   [/]");
-    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ██╔══██║██║     [/][green3 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/][chartreuse1 bold] ██║     ██╔══██║██╔══██║   ██║   [/]");
-    AnsiConsole.MarkupLine("[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗[/][green3 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/][chartreuse1 bold] ╚██████╗██║  ██║██║  ██║   ██║   [/]");
-    AnsiConsole.MarkupLine("[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝[/][green3 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/][chartreuse1 bold]  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]");
+    // LOCAL (green1) + WORKBOOK (orange1) + CHAT (chartreuse1)
+    AnsiConsole.MarkupLine("[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗     [/][orange1 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/][chartreuse1 bold]  ██████╗██╗  ██╗ █████╗ ████████╗[/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║     [/][orange1 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/][chartreuse1 bold] ██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ███████║██║     [/][orange1 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/][chartreuse1 bold] ██║     ███████║███████║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ██╔══██║██║     [/][orange1 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/][chartreuse1 bold] ██║     ██╔══██║██╔══██║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗[/][orange1 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/][chartreuse1 bold] ╚██████╗██║  ██║██║  ██║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝[/][orange1 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/][chartreuse1 bold]  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]");
     
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[dim italic]AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]");
