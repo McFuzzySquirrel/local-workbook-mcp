@@ -3,6 +3,8 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Spectre.Console;
 using ExcelMcp.SkAgent;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 AnsiConsole.Clear();
 
@@ -366,20 +368,17 @@ static async Task<string> DetectRunningModel(string baseUrl)
         
         var response = await httpClient.GetStringAsync(modelsUrl);
         
-        // Parse JSON to get first model's id from the data array
-        // Expected format: {"data":[{"id":"qwen/qwen3-8b","object":"model",...}],"object":"list"}
-        if (response.Contains("\"data\""))
+        // Use proper JSON parsing instead of string manipulation
+        var jsonDoc = JsonNode.Parse(response);
+        if (jsonDoc != null)
         {
-            var dataStart = response.IndexOf("\"data\"");
-            var firstIdStart = response.IndexOf("\"id\"", dataStart);
-            if (firstIdStart > 0)
+            var dataArray = jsonDoc["data"]?.AsArray();
+            if (dataArray != null && dataArray.Count > 0)
             {
-                firstIdStart += 6; // Move past "id":"
-                var idEnd = response.IndexOf("\"", firstIdStart);
-                if (idEnd > firstIdStart)
+                var firstModel = dataArray[0];
+                var modelId = firstModel?["id"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(modelId))
                 {
-                    var modelId = response.Substring(firstIdStart, idEnd - firstIdStart);
-                    // Return just the model name, more user-friendly
                     return modelId;
                 }
             }
@@ -387,7 +386,7 @@ static async Task<string> DetectRunningModel(string baseUrl)
         
         return "unknown";
     }
-    catch
+    catch (Exception)
     {
         return "unknown";
     }
