@@ -274,10 +274,10 @@ REMEMBER: You CAN see the data. Just call the tools! Start with get_workbook_sum
         var lastMessage = history.Last();
         if (lastMessage.Role == AuthorRole.Assistant)
         {
-            var responsePanel = new Panel(new Markup($"[blue]{lastMessage.Content.EscapeMarkup()}[/]"))
-                .Header("[blue bold]Response[/]", Justify.Left)
+            var responsePanel = new Panel(new Markup($"[orange1]{lastMessage.Content.EscapeMarkup()}[/]"))
+                .Header("[orange1 bold]Response[/]", Justify.Left)
                 .Border(BoxBorder.Rounded)
-                .BorderColor(Color.Blue)
+                .BorderColor(Color.Orange1)
                 .Padding(1, 0);
             
             AnsiConsole.Write(responsePanel);
