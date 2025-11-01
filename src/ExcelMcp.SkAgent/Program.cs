@@ -305,49 +305,27 @@ return 0;
 
 static void RenderHeader(string workbookPath, string configuredModel, string actualModel)
 {
-    // Fixed width for modern terminals (100 chars)
-    const int bannerWidth = 100;
+    // Left-aligned banner, no border - cleaner look
+    AnsiConsole.WriteLine();
     
-    var grid = new Grid();
-    grid.AddColumn(new GridColumn().Width(bannerWidth));
+    // Single line title - "LOCAL WORKBOOK CHAT" using block characters
+    AnsiConsole.MarkupLine("[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗     [/][green3 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/][chartreuse1 bold]  ██████╗██╗  ██╗ █████╗ ████████╗[/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║     [/][green3 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/][chartreuse1 bold] ██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ███████║██║     [/][green3 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/][chartreuse1 bold] ██║     ███████║███████║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ██╔══██║██║     [/][green3 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/][chartreuse1 bold] ██║     ██╔══██║██╔══██║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗[/][green3 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/][chartreuse1 bold] ╚██████╗██║  ██║██║  ██║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝[/][green3 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/][chartreuse1 bold]  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]");
     
-    // Chunkier title using block characters - centered for wider display
-    var titlePadding = (bannerWidth - 72) / 2; // 72 is approx width of "WORKBOOK" line
-    var pad = new string(' ', Math.Max(0, titlePadding));
+    AnsiConsole.WriteLine();
+    AnsiConsole.MarkupLine("[dim italic]AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]");
+    AnsiConsole.WriteLine();
     
-    grid.AddRow(new Markup(""));
-    grid.AddRow(new Markup($"{pad}[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗         [/]"));
-    grid.AddRow(new Markup($"{pad}[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║         [/]"));
-    grid.AddRow(new Markup($"{pad}[green1 bold]██║     ██║   ██║██║     ███████║██║         [/]"));
-    grid.AddRow(new Markup($"{pad}[green1 bold]██║     ██║   ██║██║     ██╔══██║██║         [/]"));
-    grid.AddRow(new Markup($"{pad}[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗    [/]"));
-    grid.AddRow(new Markup($"{pad}[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝    [/]"));
-    
-    grid.AddRow(new Markup($"{pad}[green3 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/]"));
-    grid.AddRow(new Markup($"{pad}[green3 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/]"));
-    grid.AddRow(new Markup($"{pad}[green3 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/]"));
-    grid.AddRow(new Markup($"{pad}[green3 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/]"));
-    grid.AddRow(new Markup($"{pad}[green3 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/]"));
-    grid.AddRow(new Markup($"{pad}[green3 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/]"));
-    
-    grid.AddRow(new Markup($"{pad}[chartreuse1 bold] ██████╗██╗  ██╗ █████╗ ████████╗[/]"));
-    grid.AddRow(new Markup($"{pad}[chartreuse1 bold]██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]"));
-    grid.AddRow(new Markup($"{pad}[chartreuse1 bold]██║     ███████║███████║   ██║   [/]"));
-    grid.AddRow(new Markup($"{pad}[chartreuse1 bold]██║     ██╔══██║██╔══██║   ██║   [/]"));
-    grid.AddRow(new Markup($"{pad}[chartreuse1 bold]╚██████╗██║  ██║██║  ██║   ██║   [/]"));
-    grid.AddRow(new Markup($"{pad}[chartreuse1 bold] ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]"));
-    
-    grid.AddRow(new Markup(""));
-    grid.AddRow(new Markup("[dim italic]AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]"));
-    grid.AddRow(new Markup(""));
-    
-    // Session info table
+    // Session info - simple table, no border
     var infoTable = new Table()
         .HideHeaders()
+        .Border(TableBorder.None)
         .AddColumn(new TableColumn("").Width(15))
         .AddColumn(new TableColumn(""));
-    
-    infoTable.Border = TableBorder.None;
     
     infoTable.AddRow(
         new Markup("[dim]Workbook:[/]"),
@@ -375,15 +353,7 @@ static void RenderHeader(string workbookPath, string configuredModel, string act
         new Markup("[green]help[/] [dim]|[/] [green]load[/] [dim]<path>[/] [dim]|[/] [green]clear[/] [dim]|[/] [green]exit[/]")
     );
     
-    grid.AddRow(infoTable);
-    
-    // Fixed-width panel (80 chars - Panel doesn't support .Width(), so use grid constraint)
-    var panel = new Panel(grid)
-        .Border(BoxBorder.Double)
-        .BorderColor(Color.Green)
-        .Padding(1, 0);
-    
-    AnsiConsole.Write(panel);
+    AnsiConsole.Write(infoTable);
     AnsiConsole.WriteLine();
 }
 
