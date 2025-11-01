@@ -184,37 +184,23 @@ public class ExcelAgentService : IExcelAgentService
             // Get conversation context for LLM
             var chatHistory = _conversationManager.GetContextForLLM();
 
-            // Add system context about current workbook
+            // Add comprehensive system prompt (workbook-agnostic, proven from CLI agent)
+            chatHistory.AddSystemMessage(PromptTemplates.GetCompleteSystemPrompt());
+            
+            // Add specific context about current workbook
             var sheets = session.CurrentContext.Metadata?.Worksheets.Select(w => w.Name).ToList() ?? new List<string>();
             var tables = session.CurrentContext.Metadata?.Worksheets
                 .SelectMany(w => w.Tables.Select(t => t.Name))
                 .ToList() ?? new List<string>();
 
-            var systemContext = $@"You are analyzing the workbook '{session.CurrentContext.WorkbookName}' 
-with {sheets.Count} sheets: {string.Join(", ", sheets)}. 
-Available tables: {string.Join(", ", tables)}.
+            var workbookContext = $@"CURRENT WORKBOOK CONTEXT:
+- File: '{session.CurrentContext.WorkbookName}'
+- Sheets ({sheets.Count}): {string.Join(", ", sheets.Take(10))}{(sheets.Count > 10 ? "..." : "")}
+- Tables: {(tables.Any() ? string.Join(", ", tables.Take(10)) : "None defined")}{(tables.Count > 10 ? "..." : "")}
 
-TOOL SELECTION RULES:
-1. When user asks to SEE/SHOW/DISPLAY actual DATA or ROWS → use preview_table
-   Examples: ""show me rows"", ""display the data"", ""what's in the Sales table"", ""first 10 rows""
-   
-2. When user asks WHAT sheets/tables EXIST or structure info → use list_workbook_structure
-   Examples: ""what sheets are there"", ""list tables"", ""what columns does Sales have""
-
-3. When user asks to SEARCH for specific text → use search_workbook
-   Examples: ""find Laptop"", ""search for California""
-
-IMPORTANT: When you use preview_table and receive CSV data, output it as an HTML table using this format:
-<table class='data-table'>
-<thead><tr><th>Column1</th><th>Column2</th></tr></thead>
-<tbody>
-<tr><td>value1</td><td>value2</td></tr>
-</tbody>
-</table>
-
-Do NOT describe the data or reformat it as markdown. Present the actual data in HTML table format.";
+Remember: Use tools to discover structure if you need more details!";
             
-            chatHistory.AddSystemMessage(systemContext);
+            chatHistory.AddSystemMessage(workbookContext);
 
             // Invoke Semantic Kernel with automatic function calling enabled
             var chatService = _kernel.GetRequiredService<IChatCompletionService>();
@@ -396,21 +382,70 @@ Do NOT describe the data or reformat it as markdown. Present the actual data in 
     }
 
     /// <summary>
-    /// Detects CSV data in the response and converts it to HTML table format.
+    /// Formats response content appropriately based on content type detection.
+    /// Handles CSV data, HTML tables, and plain text.
     /// Returns formatted content and appropriate content type.
     /// </summary>
     private (string content, ContentType type) FormatResponseContent(string responseContent)
     {
-        // Check if response contains CSV data (heuristic: has commas and line breaks)
+        if (string.IsNullOrWhiteSpace(responseContent))
+        {
+            return (string.Empty, ContentType.Text);
+        }
+
+        // Check if response already contains HTML table (LLM may generate this)
+        if (responseContent.Contains("<table") && responseContent.Contains("</table>"))
+        {
+            // Already has HTML table - just ensure it's properly wrapped
+            if (!responseContent.Contains("class=\"data-table\""))
+            {
+                responseContent = responseContent.Replace("<table", "<table class=\"data-table\"");
+            }
+            return (responseContent, ContentType.Table);
+        }
+
+        // Try to detect and parse CSV/tabular data from tool responses
         if (TryParseCsvToTable(responseContent, out var tableData))
         {
             var htmlTable = _responseFormatter.FormatAsHtmlTable(tableData);
+            
+            // If LLM added commentary before/after the CSV, preserve it
+            var tableStartIndex = FindTableDataStart(responseContent);
+            if (tableStartIndex > 0)
+            {
+                var commentary = responseContent.Substring(0, tableStartIndex).Trim();
+                if (!string.IsNullOrWhiteSpace(commentary))
+                {
+                    var formattedCommentary = _responseFormatter.FormatAsText(commentary);
+                    return ($"{formattedCommentary}\n\n{htmlTable}", ContentType.Table);
+                }
+            }
+            
             return (htmlTable, ContentType.Table);
         }
 
         // No table detected, return as formatted text
         var formattedText = _responseFormatter.FormatAsText(responseContent);
         return (formattedText, ContentType.Text);
+    }
+
+    /// <summary>
+    /// Finds where tabular data starts in a response (after any introductory text).
+    /// </summary>
+    private static int FindTableDataStart(string content)
+    {
+        var lines = content.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            // Look for CSV header pattern (multiple comma-separated words)
+            if (line.Split(',').Length >= 2 && 
+                line.Split(',').All(part => !string.IsNullOrWhiteSpace(part)))
+            {
+                return content.IndexOf(line);
+            }
+        }
+        return 0;
     }
 
     /// <summary>
