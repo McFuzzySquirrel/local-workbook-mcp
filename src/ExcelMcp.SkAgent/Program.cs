@@ -361,19 +361,27 @@ static async Task<string> DetectRunningModel(string baseUrl)
 {
     try
     {
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         var modelsUrl = baseUrl.Replace("/v1", "") + "/v1/models";
         
         var response = await httpClient.GetStringAsync(modelsUrl);
         
-        // Parse JSON to get model name
-        if (response.Contains("\"id\""))
+        // Parse JSON to get first model's id from the data array
+        // Expected format: {"data":[{"id":"qwen/qwen3-8b","object":"model",...}],"object":"list"}
+        if (response.Contains("\"data\""))
         {
-            var idStart = response.IndexOf("\"id\"") + 6;
-            var idEnd = response.IndexOf("\"", idStart);
-            if (idEnd > idStart)
+            var dataStart = response.IndexOf("\"data\"");
+            var firstIdStart = response.IndexOf("\"id\"", dataStart);
+            if (firstIdStart > 0)
             {
-                return response.Substring(idStart, idEnd - idStart);
+                firstIdStart += 6; // Move past "id":"
+                var idEnd = response.IndexOf("\"", firstIdStart);
+                if (idEnd > firstIdStart)
+                {
+                    var modelId = response.Substring(firstIdStart, idEnd - firstIdStart);
+                    // Return just the model name, more user-friendly
+                    return modelId;
+                }
             }
         }
         
