@@ -1,3 +1,6 @@
+# NOTE: Changes still in progress
+May cause breaking changes
+
 # Excel Local MCP
 
 Local Model Context Protocol server and CLI tools for conversational analysis of Excel workbooks. Chat with your spreadsheets using natural language - ask questions, search data, preview tables, and switch between workbooks without leaving the terminal or browser.
