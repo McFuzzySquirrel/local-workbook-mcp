@@ -265,17 +265,17 @@ REMEMBER: You CAN see the data. Just call the tools! Start with get_workbook_sum
             foreach (var logEntry in agent.DebugLog)
             {
                 // Add colored bullet based on success/error keywords
-                string bullet = "●";
+                string bullet = "•";  // Using middle dot instead of filled circle
                 string color = "yellow";
                 
                 if (logEntry.Contains("✓") || logEntry.Contains("Success") || logEntry.Contains("returned"))
                 {
-                    bullet = "●";
+                    bullet = "✓";  // Checkmark for success
                     color = "green";
                 }
                 else if (logEntry.Contains("✗") || logEntry.Contains("Error") || logEntry.Contains("Failed"))
                 {
-                    bullet = "●";
+                    bullet = "✗";  // X mark for errors
                     color = "red";
                 }
                 
