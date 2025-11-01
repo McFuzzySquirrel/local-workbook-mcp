@@ -3,6 +3,8 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Spectre.Console;
 using ExcelMcp.SkAgent;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 AnsiConsole.Clear();
 
@@ -262,7 +264,22 @@ REMEMBER: You CAN see the data. Just call the tools! Start with get_workbook_sum
             
             foreach (var logEntry in agent.DebugLog)
             {
-                debugTable.AddRow(new Markup($"[dim]{logEntry.EscapeMarkup()}[/]"));
+                // Add colored bullet based on success/error keywords
+                string bullet = "•";  // Using middle dot instead of filled circle
+                string color = "yellow";
+                
+                if (logEntry.Contains("✓") || logEntry.Contains("Success") || logEntry.Contains("returned"))
+                {
+                    bullet = "✓";  // Checkmark for success
+                    color = "green";
+                }
+                else if (logEntry.Contains("✗") || logEntry.Contains("Error") || logEntry.Contains("Failed"))
+                {
+                    bullet = "✗";  // X mark for errors
+                    color = "red";
+                }
+                
+                debugTable.AddRow(new Markup($"[{color}]{bullet}[/] [dim]{logEntry.EscapeMarkup()}[/]"));
             }
             
             AnsiConsole.Write(debugTable);
@@ -272,10 +289,10 @@ REMEMBER: You CAN see the data. Just call the tools! Start with get_workbook_sum
         var lastMessage = history.Last();
         if (lastMessage.Role == AuthorRole.Assistant)
         {
-            var responsePanel = new Panel(new Markup($"[blue]{lastMessage.Content.EscapeMarkup()}[/]"))
-                .Header("[blue bold]Response[/]", Justify.Left)
+            var responsePanel = new Panel(new Markup($"[orange1]{lastMessage.Content.EscapeMarkup()}[/]"))
+                .Header("[orange1 bold]Response[/]", Justify.Left)
                 .Border(BoxBorder.Rounded)
-                .BorderColor(Color.Blue)
+                .BorderColor(Color.Orange1)
                 .Padding(1, 0);
             
             AnsiConsole.Write(responsePanel);
@@ -309,12 +326,13 @@ static void RenderHeader(string workbookPath, string configuredModel, string act
     AnsiConsole.WriteLine();
     
     // Single line title - "LOCAL WORKBOOK CHAT" using block characters
-    AnsiConsole.MarkupLine("[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗     [/][green3 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/][chartreuse1 bold]  ██████╗██╗  ██╗ █████╗ ████████╗[/]");
-    AnsiConsole.MarkupLine("[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║     [/][green3 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/][chartreuse1 bold] ██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]");
-    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ███████║██║     [/][green3 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/][chartreuse1 bold] ██║     ███████║███████║   ██║   [/]");
-    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ██╔══██║██║     [/][green3 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/][chartreuse1 bold] ██║     ██╔══██║██╔══██║   ██║   [/]");
-    AnsiConsole.MarkupLine("[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗[/][green3 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/][chartreuse1 bold] ╚██████╗██║  ██║██║  ██║   ██║   [/]");
-    AnsiConsole.MarkupLine("[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝[/][green3 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/][chartreuse1 bold]  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]");
+    // LOCAL (green1) + WORKBOOK (orange1) + CHAT (chartreuse1)
+    AnsiConsole.MarkupLine("[green1 bold]██╗      ██████╗  ██████╗ █████╗ ██╗     [/][orange1 bold]██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗  ██████╗  ██████╗ ██╗  ██╗[/][chartreuse1 bold]  ██████╗██╗  ██╗ █████╗ ████████╗[/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██╔═══██╗██╔════╝██╔══██╗██║     [/][orange1 bold]██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝[/][chartreuse1 bold] ██╔════╝██║  ██║██╔══██╗╚══██╔══╝[/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ███████║██║     [/][orange1 bold]██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝██║   ██║██║   ██║█████╔╝ [/][chartreuse1 bold] ██║     ███████║███████║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]██║     ██║   ██║██║     ██╔══██║██║     [/][orange1 bold]██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██║   ██║██║   ██║██╔═██╗ [/][chartreuse1 bold] ██║     ██╔══██║██╔══██║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]███████╗╚██████╔╝╚██████╗██║  ██║███████╗[/][orange1 bold]╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝╚██████╔╝╚██████╔╝██║  ██╗[/][chartreuse1 bold] ╚██████╗██║  ██║██║  ██║   ██║   [/]");
+    AnsiConsole.MarkupLine("[green1 bold]╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝[/][orange1 bold] ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝[/][chartreuse1 bold]  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   [/]");
     
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[dim italic]AI-powered spreadsheet analysis - Private, Fast, Terminal-based[/]");
@@ -361,25 +379,30 @@ static async Task<string> DetectRunningModel(string baseUrl)
 {
     try
     {
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         var modelsUrl = baseUrl.Replace("/v1", "") + "/v1/models";
         
         var response = await httpClient.GetStringAsync(modelsUrl);
         
-        // Parse JSON to get model name
-        if (response.Contains("\"id\""))
+        // Use proper JSON parsing instead of string manipulation
+        var jsonDoc = JsonNode.Parse(response);
+        if (jsonDoc != null)
         {
-            var idStart = response.IndexOf("\"id\"") + 6;
-            var idEnd = response.IndexOf("\"", idStart);
-            if (idEnd > idStart)
+            var dataArray = jsonDoc["data"]?.AsArray();
+            if (dataArray != null && dataArray.Count > 0)
             {
-                return response.Substring(idStart, idEnd - idStart);
+                var firstModel = dataArray[0];
+                var modelId = firstModel?["id"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(modelId))
+                {
+                    return modelId;
+                }
             }
         }
         
         return "unknown";
     }
-    catch
+    catch (Exception)
     {
         return "unknown";
     }

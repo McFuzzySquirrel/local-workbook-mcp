@@ -2,9 +2,14 @@
     color-scheme: dark;
 }
 
-body {
+html, body {
     margin: 0;
-    min-height: 100vh;
+    padding: 0;
+    height: 100%;
+    overflow: hidden; /* Prevent double scrollbars */
+}
+
+body {
     font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     background: radial-gradient(circle at top, #0f172a 0%, #020617 55%, #010313 100%);
     color: #e2e8f0;
@@ -95,7 +100,8 @@ body {
     flex-direction: column;
     gap: 1.5rem;
     padding: 1.75rem 2.5rem;
-    max-height: min(60vh, 640px);
+    /* Dynamic height - grows with content, max at 80vh */
+    max-height: 80vh;
     overflow-y: auto;
 }
 
@@ -301,7 +307,7 @@ body {
     border-radius: 16px;
     border: 1px solid rgba(71, 85, 105, 0.4);
     overflow: hidden;
-    min-height: 500px;
+    height: 100%; /* Fill grid cell height */
 }
 
 /* Workbook Selector */
