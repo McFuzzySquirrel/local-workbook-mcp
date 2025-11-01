@@ -95,7 +95,8 @@ body {
     flex-direction: column;
     gap: 1.5rem;
     padding: 1.75rem 2.5rem;
-    max-height: min(60vh, 640px);
+    /* Dynamic height - grows with content, max at 80vh */
+    max-height: 80vh;
     overflow-y: auto;
 }
 
