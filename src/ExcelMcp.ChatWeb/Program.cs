@@ -79,8 +79,12 @@ builder.Services.AddSingleton(serviceProvider =>
     var kernelBuilder = Kernel.CreateBuilder();
     
     // Add OpenAI chat completion for local LLM (LM Studio, Ollama, etc.)
-    // Use HttpClient to bypass OpenAI SDK's strict response validation
-    var httpClient = new HttpClient();
+    // Use HttpClient with extended timeout for slower models on Raspberry Pi
+    var httpClient = new HttpClient
+    {
+        Timeout = TimeSpan.FromSeconds(skOptions.TimeoutSeconds) // Use configured timeout (480s)
+    };
+    
     kernelBuilder.AddOpenAIChatCompletion(
         modelId: skOptions.Model,
         apiKey: skOptions.ApiKey,
