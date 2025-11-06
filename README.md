@@ -11,7 +11,7 @@ Sometimes they’re attempts to solve real problems I’ve come across, other ti
 This is my **learning playground**, a space where I test ideas, try new things, and learn by doing.  
 
 I share them here in case they help or inspire someone else.  
-So expect some projects to be **messy**, others **well-structured** — all of them are honest reflections of learning in progress.  
+So expect some projects to be **messy**, others **well-structured**, all of them are honest reflections of learning in progress.  
 
 Feel free to **use**, **modify**, or **build on** anything here. 
 
