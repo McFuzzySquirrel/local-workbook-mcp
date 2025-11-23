@@ -1,4 +1,7 @@
 @using ExcelMcp.ChatWeb.Models
+@using ExcelMcp.ChatWeb.Services
+@inject ExportService ExportService
+@inject IJSRuntime JSRuntime
 
 @* DataTable Component - Renders structured table data *@
 
@@ -26,6 +29,7 @@ else
                 {
                     <span class="metadata-item warning">⚠️ Data truncated for display</span>
                 }
+                <button class="btn btn-link btn-sm" style="margin-left: auto;" @onclick="ExportTable">Export CSV</button>
             </div>
         }
 
@@ -75,4 +79,19 @@ else
 @code {
     [Parameter, EditorRequired]
     public TableData Data { get; set; } = null!;
+
+    private async Task ExportTable()
+    {
+        try
+        {
+            var bytes = ExportService.ExportDataView(Data);
+            var base64 = Convert.ToBase64String(bytes);
+            var fileName = $"table-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "text/csv", base64);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting table: {ex.Message}");
+        }
+    }
 }

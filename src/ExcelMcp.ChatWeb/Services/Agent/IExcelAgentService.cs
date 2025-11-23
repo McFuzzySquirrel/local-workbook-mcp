@@ -46,4 +46,14 @@ public interface IExcelAgentService
     Task<List<string>> GetSuggestedQueriesAsync(
         WorkbookSession session,
         int maxSuggestions = 3);
+
+    /// <summary>
+    /// Generates a summary of the current conversation.
+    /// </summary>
+    /// <param name="session">Current session with conversation history.</param>
+    /// <param name="cancellationToken">For cancellation support.</param>
+    /// <returns>Agent response containing the summary.</returns>
+    Task<AgentResponse> SummarizeConversationAsync(
+        WorkbookSession session,
+        CancellationToken cancellationToken = default);
 }

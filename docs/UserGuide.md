@@ -92,6 +92,22 @@ Type natural language queries in the input box:
 - "Find all mentions of Contoso"
 - "Where does 'revenue' appear?"
 
+**Advanced Filtering:**
+- "Show sales greater than 5000"
+- "Find customers in NY"
+- "Show items with price between 10 and 20"
+
+**Cross-Sheet Analysis:**
+- "Compare Sales and Inventory for matching products"
+- "Find all mentions of Project X across all sheets"
+
+### 6. Advanced Features
+
+- **Summarize:** Click the "Summarize" button to get a concise report of your conversation and findings.
+- **Export Chat:** Click "Export Chat" to download the full conversation history as a Markdown file.
+- **Export Data:** When viewing a table, click "Export CSV" to download the data.
+- **Context Awareness:** The agent remembers previous questions. You can ask "Show me the first one" after listing sheets.
+
 The system will:
 - Automatically select the right MCP tool based on your question
 - Call the MCP server with appropriate parameters

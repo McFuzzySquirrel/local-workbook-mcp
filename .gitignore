@@ -77,3 +77,7 @@ logs/
 # Temporary files
 *.tmp
 *.bak
+
+# User-specific files
+*.user
+*.suo

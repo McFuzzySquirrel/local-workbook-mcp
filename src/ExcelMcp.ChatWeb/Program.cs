@@ -104,6 +104,7 @@ builder.Services.AddSingleton<AgentLogger>();
 builder.Services.AddScoped<IExcelAgentService, ExcelAgentService>();
 builder.Services.AddScoped<IConversationManager, ConversationManager>();
 builder.Services.AddSingleton<IResponseFormatter, ResponseFormatter>();
+builder.Services.AddScoped<ExportService>();
 
 // Session state (per Blazor circuit)
 builder.Services.AddScoped<WorkbookSession>();

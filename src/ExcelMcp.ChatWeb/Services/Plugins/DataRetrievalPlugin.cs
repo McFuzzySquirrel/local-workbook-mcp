@@ -70,6 +70,93 @@ public class DataRetrievalPlugin
     }
 
     /// <summary>
+    /// Previews data from multiple sheets in a single call.
+    /// </summary>
+    [KernelFunction("preview_multiple_sheets")]
+    [Description("Get data rows from multiple worksheets at once. Useful for cross-sheet comparisons.")]
+    public async Task<string> PreviewMultipleSheets(
+        [Description("Comma-separated list of worksheet names")] string sheetNames,
+        [Description("Maximum number of rows per sheet (default: 5)")] int rowsPerSheet = 5)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(sheetNames))
+            {
+                return CreateErrorResponse("INVALID_INPUT", "Sheet names cannot be empty");
+            }
+
+            var sheets = sheetNames.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+            if (!sheets.Any())
+            {
+                return CreateErrorResponse("INVALID_INPUT", "No valid sheet names provided");
+            }
+
+            if (rowsPerSheet < 1 || rowsPerSheet > 20)
+            {
+                return CreateErrorResponse("INVALID_INPUT", "rowsPerSheet must be between 1 and 20");
+            }
+
+            var results = new Dictionary<string, object>();
+            var errors = new List<string>();
+
+            foreach (var sheet in sheets)
+            {
+                try
+                {
+                    var arguments = new JsonObject
+                    {
+                        ["worksheet"] = sheet,
+                        ["rows"] = rowsPerSheet
+                    };
+
+                    var result = await _mcpClient.CallToolAsync("excel-preview-table", arguments, CancellationToken.None);
+                    
+                    if (!result.IsError && result.Content != null && result.Content.Count > 0)
+                    {
+                        var json = result.Content[0].Text;
+                        if (!string.IsNullOrEmpty(json))
+                        {
+                            var node = JsonNode.Parse(json);
+                            if (node != null)
+                            {
+                                results[sheet] = node;
+                            }
+                            else
+                            {
+                                results[sheet] = new { error = "Invalid JSON response" };
+                            }
+                        }
+                        else
+                        {
+                            results[sheet] = new { error = "Empty response" };
+                        }
+                    }
+                    else
+                    {
+                        results[sheet] = new { error = "Failed to retrieve data" };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results[sheet] = new { error = ex.Message };
+                    errors.Add($"Error processing sheet '{sheet}': {ex.Message}");
+                }
+            }
+
+            return JsonSerializer.Serialize(new
+            {
+                requestedSheets = sheets,
+                data = results,
+                errors = errors.Any() ? errors : null
+            });
+        }
+        catch (Exception ex)
+        {
+            return CreateErrorResponse("MCP_ERROR", $"Error retrieving multiple sheets: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Gets data from a specific cell range (e.g., "A1:D10").
     /// </summary>
     [KernelFunction("get_rows_in_range")]
@@ -273,6 +360,138 @@ public class DataRetrievalPlugin
         catch (Exception ex)
         {
             return CreateErrorResponse("MCP_ERROR", $"Error calculating aggregation: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Filters rows in a worksheet or table based on a column value.
+    /// </summary>
+    [KernelFunction("filter_table")]
+    [Description("Filters rows in a worksheet or table based on a column value. Use for queries like 'Show sales > 1000' or 'Find customers in NY'.")]
+    public async Task<string> FilterTable(
+        [Description("Worksheet name")] string worksheet,
+        [Description("Column name to filter by")] string column,
+        [Description("Filter value (for 'between', use two values separated by comma e.g. '10,20')")] string value,
+        [Description("Operator: equals, contains, greater_than, less_than, between")] string @operator,
+        [Description("Max rows to return (default: 20)")] int limit = 20)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(worksheet)) return CreateErrorResponse("INVALID_INPUT", "Worksheet name required");
+            if (string.IsNullOrWhiteSpace(column)) return CreateErrorResponse("INVALID_INPUT", "Column name required");
+            
+            // Fetch data (limit to 1000 rows for performance)
+            var arguments = new JsonObject
+            {
+                ["worksheet"] = worksheet,
+                ["rows"] = 1000
+            };
+
+            var result = await _mcpClient.CallToolAsync("excel-preview-table", arguments, CancellationToken.None);
+            
+            if (result.IsError || result.Content == null || result.Content.Count == 0)
+            {
+                return CreateErrorResponse("MCP_ERROR", "Failed to retrieve data for filtering");
+            }
+
+            var json = result.Content[0].Text;
+            if (string.IsNullOrEmpty(json)) return CreateErrorResponse("MCP_ERROR", "Empty response");
+
+            var tableData = JsonNode.Parse(json);
+            var columns = tableData?["columns"]?.AsArray();
+            var rows = tableData?["rows"]?.AsArray();
+
+            if (columns == null || rows == null) return CreateErrorResponse("MCP_ERROR", "Invalid data structure");
+
+            // Find column index
+            int colIndex = -1;
+            for (int i = 0; i < columns.Count; i++)
+            {
+                if (columns[i]?.ToString().Equals(column, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    colIndex = i;
+                    break;
+                }
+            }
+
+            if (colIndex == -1) return CreateErrorResponse("COLUMN_NOT_FOUND", $"Column '{column}' not found");
+
+            // Filter rows
+            var filteredRows = new List<JsonNode>();
+            var op = @operator.ToLowerInvariant();
+            
+            foreach (var row in rows)
+            {
+                if (row == null) continue;
+                var rowArray = row.AsArray();
+                if (rowArray == null || colIndex >= rowArray.Count) continue;
+
+                var cellValue = rowArray[colIndex]?.ToString() ?? "";
+                bool match = false;
+
+                try 
+                {
+                    if (op == "contains")
+                    {
+                        match = cellValue.Contains(value, StringComparison.OrdinalIgnoreCase);
+                    }
+                    else if (op == "equals")
+                    {
+                        match = cellValue.Equals(value, StringComparison.OrdinalIgnoreCase);
+                    }
+                    else 
+                    {
+                        // Numeric comparisons
+                        if (double.TryParse(cellValue, out double numCell))
+                        {
+                            if (op == "greater_than" && double.TryParse(value, out double numVal))
+                            {
+                                match = numCell > numVal;
+                            }
+                            else if (op == "less_than" && double.TryParse(value, out double numVal2))
+                            {
+                                match = numCell < numVal2;
+                            }
+                            else if (op == "between")
+                            {
+                                var parts = value.Split(',');
+                                if (parts.Length == 2 && 
+                                    double.TryParse(parts[0], out double min) && 
+                                    double.TryParse(parts[1], out double max))
+                                {
+                                    match = numCell >= min && numCell <= max;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { /* Ignore parsing errors */ }
+
+                if (match)
+                {
+                    filteredRows.Add(row);
+                    if (filteredRows.Count >= limit) break;
+                }
+            }
+
+            // Construct response
+            var response = new
+            {
+                columns = columns,
+                rows = filteredRows,
+                metadata = new 
+                { 
+                    filter = new { column, @operator, value },
+                    matchCount = filteredRows.Count,
+                    totalScanned = rows.Count
+                }
+            };
+
+            return JsonSerializer.Serialize(response);
+        }
+        catch (Exception ex)
+        {
+            return CreateErrorResponse("FILTER_ERROR", ex.Message);
         }
     }
 
