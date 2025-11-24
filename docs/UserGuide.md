@@ -5,8 +5,8 @@
 This guide covers setup, workflows, and troubleshooting for the Excel Local MCP project.
 
 **Status:** 
-- ✅ **CLI Agent** - Stable, well-tested, recommended for daily use
-- ⚠️ **Web Chat** - Functional, needs validation testing before broad use
+- ✅ **CLI Agent** - Stable, well-tested, recommended for terminal users
+- ✅ **Web Chat** - Feature complete, recommended for browser users
 
 ## Prerequisites
 
@@ -621,9 +621,9 @@ print(f"Workbook has {len(structure['worksheets'])} sheets")
 
 ---
 
-## Using the Web Chat Interface (Work in Progress)
+## Using the Web Chat Interface
 
-**Status:** Functional but needs validation testing. Use CLI agent for critical work.
+**Status:** Feature complete.
 
 ### Prerequisites
 - .NET 9.0 SDK
@@ -655,10 +655,12 @@ dotnet run --project src/ExcelMcp.ChatWeb
 
 ### Features
 - ✅ Workbook-agnostic prompts (same as CLI)
-- ✅ HTML table rendering
+- ✅ HTML table rendering with filtering
 - ✅ Linux/Raspberry Pi support (ARM64)
 - ✅ Conversation history
 - ✅ Suggested queries
+- ✅ Export to Markdown/CSV
+- ✅ Multi-turn context
 
 ### Troubleshooting
 - **Port conflict:** Use `ASPNETCORE_URLS="http://localhost:5001"`

@@ -1,7 +1,7 @@
 # Future Features & Roadmap
 
 **Last Updated:** November 1, 2025  
-**Project Status:** Work in progress - CLI stable, web chat needs validation
+**Project Status:** Feature Complete - CLI and Web Chat fully functional
 
 ---
 
@@ -15,6 +15,7 @@
 - ✅ Linux/Raspberry Pi support
 - ✅ Sample workbooks
 - ✅ HTML table rendering fix (Nov 1)
+- ✅ User Story 1: Basic Workbook Querying
 - ✅ User Story 2: Multi-Turn Conversations
 - ✅ User Story 3: Cross-Sheet Insights
 - ✅ User Story 4: Data Filtering
@@ -24,10 +25,10 @@
 
 ## In Progress 🚧
 
-**User Story 1 Validation (Phase 3)**
-- Manual testing T078-T084
-- End-to-end workflow validation
-- Performance benchmarking
+**Phase 8: Polish & Cross-Cutting Concerns**
+- Code cleanup
+- Security hardening
+- Final performance validation
 
 **See:** [WEB-CHAT-ROADMAP.md](../WEB-CHAT-ROADMAP.md)
 

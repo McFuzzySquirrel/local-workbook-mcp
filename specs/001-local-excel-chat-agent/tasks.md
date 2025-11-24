@@ -287,9 +287,9 @@
 
 ### Validation
 
-- [ ] T123 [US5] Test conversation export: complete 5-turn conversation → click "Export Conversation" → verify Markdown file downloaded with all turns
-- [ ] T124 [US5] Test data view export: display table → click "Export Table" → verify CSV file contains correct columns and rows
-- [ ] T125 [US5] Test insights summary: conduct analysis session → click "Generate Summary" → verify LLM-generated concise report with key findings
+- [X] T123 [US5] Test conversation export: complete 5-turn conversation → click "Export Conversation" → verify Markdown file downloaded with all turns
+- [X] T124 [US5] Test data view export: display table → click "Export Table" → verify CSV file contains correct columns and rows
+- [X] T125 [US5] Test insights summary: conduct analysis session → click "Generate Summary" → verify LLM-generated concise report with key findings
 
 **Checkpoint**: All user stories 1-5 independently functional. Export and sharing capabilities complete.
 
@@ -301,34 +301,34 @@
 
 ### Documentation
 
-- [ ] T126 [P] Update `README.md` with feature overview, setup instructions, and link to quickstart.md
-- [ ] T127 [P] Create `docs/UserGuide.md` with end-user instructions for using the chat interface
-- [ ] T128 [P] Update `docs/FutureFeatures.md` with potential enhancements beyond current scope
+- [X] T126 [P] Update `README.md` with feature overview, setup instructions, and link to quickstart.md
+- [X] T127 [P] Create `docs/UserGuide.md` with end-user instructions for using the chat interface
+- [X] T128 [P] Update `docs/FutureFeatures.md` with potential enhancements beyond current scope
 
 ### Code Quality
 
-- [ ] T129 Code cleanup: remove unused usings, apply consistent formatting across all new files
-- [ ] T130 Refactoring: extract common error handling patterns into shared utility class
-- [ ] T131 Add XML documentation comments to all public APIs in Services/Agent/ and Services/Plugins/
+- [X] T129 Code cleanup: remove unused usings, apply consistent formatting across all new files
+- [X] T130 Refactoring: extract common error handling patterns into shared utility class
+- [X] T131 Add XML documentation comments to all public APIs in Services/Agent/ and Services/Plugins/
 
 ### Performance Optimization
 
-- [ ] T132 Profile workbook load time → optimize if exceeding 5-second target for 50MB files
-- [ ] T133 Profile query response time → optimize if exceeding 10-second target for structure queries
-- [ ] T134 Add response caching for repeated identical queries within same session
+- [X] T132 Profile workbook load time → optimize if exceeding 5-second target for 50MB files
+- [X] T133 Profile query response time → optimize if exceeding 10-second target for structure queries
+- [X] T134 Add response caching for repeated identical queries within same session
 
 ### Security Hardening
 
-- [ ] T135 Audit error messages across all components to ensure no sensitive data exposure (file paths, sheet names, cell values)
-- [ ] T136 Add input validation for file paths in WorkbookSelector to prevent path traversal attacks
-- [ ] T137 Review all AgentLogger calls to ensure sanitization before logging user queries containing potential PII
+- [X] T135 Audit error messages across all components to ensure no sensitive data exposure (file paths, sheet names, cell values)
+- [X] T136 Add input validation for file paths in WorkbookSelector to prevent path traversal attacks
+- [X] T137 Review all AgentLogger calls to ensure sanitization before logging user queries containing potential PII
 
 ### Final Validation
 
-- [ ] T138 Run complete quickstart.md validation end-to-end following developer guide
-- [ ] T139 Test on sample workbooks from `examples/` directory covering all user scenarios
-- [ ] T140 Verify all 10 success criteria from spec.md (SC-001 through SC-010) are met
-- [ ] T141 Perform constitution compliance check: Privacy-First, MCP Protocol, SK Integration, Self-Contained Deployment, Structured Observability
+- [X] T138 Run complete quickstart.md validation end-to-end following developer guide
+- [X] T139 Test on sample workbooks from `examples/` directory covering all user scenarios
+- [X] T140 Verify all 10 success criteria from spec.md (SC-001 through SC-010) are met
+- [X] T141 Perform constitution compliance check: Privacy-First, MCP Protocol, SK Integration, Self-Contained Deployment, Structured Observability
 
 **Checkpoint**: Feature complete, polished, and ready for release
 
