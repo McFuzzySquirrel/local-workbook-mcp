@@ -382,6 +382,91 @@ Remember: Use tools to discover structure if you need more details!";
     }
 
     /// <summary>
+    /// Generates a summary of the current conversation.
+    /// </summary>
+    public async Task<AgentResponse> SummarizeConversationAsync(
+        WorkbookSession session,
+        CancellationToken cancellationToken = default)
+    {
+        if (session == null) throw new ArgumentNullException(nameof(session));
+
+        var correlationId = Guid.NewGuid().ToString("N")[..12];
+        _logger.LogQuery(correlationId, "Requesting conversation summary");
+
+        try
+        {
+            if (session.ConversationHistory.Count == 0)
+            {
+                return new AgentResponse
+                {
+                    CorrelationId = correlationId,
+                    Content = "There is no conversation to summarize yet.",
+                    ContentType = ContentType.Text,
+                    ProcessingTimeMs = 0,
+                    ModelUsed = _skOptions.Model
+                };
+            }
+
+            // Add the user's intent to the conversation history first
+            _conversationManager.AddUserTurn("Can you summarize what we've discussed?", correlationId);
+
+            var startTime = DateTimeOffset.UtcNow;
+
+            // Create a specific chat history for summarization
+            // We start with the current context window
+            var summaryChat = new ChatHistory();
+            
+            // Add system instruction for summarization
+            summaryChat.AddSystemMessage("You are a helpful assistant. Summarize the key insights and findings from the conversation. Be concise and focus on data discoveries.");
+
+            // Copy existing context (excluding system messages if we want, but context window usually has them)
+            foreach (var msg in session.ContextWindow)
+            {
+                // Skip the last user message we just added if it's already in context window (it is)
+                // But we want to ensure the LLM sees the history + the instruction
+                summaryChat.Add(msg);
+            }
+
+            // Add specific instruction if not already clear
+            // The last message in ContextWindow is "Can you summarize..." because we just added it via AddUserTurn
+            // So the LLM should respond to that.
+            
+            // However, to ensure a GOOD summary, we might want to inject a system message at the end or just rely on the user query.
+            // Let's rely on the user query "Can you summarize..." which is now at the end of summaryChat.
+
+            var chatService = _kernel.GetRequiredService<IChatCompletionService>();
+            
+            var result = await chatService.GetChatMessageContentAsync(
+                summaryChat,
+                kernel: _kernel,
+                cancellationToken: cancellationToken);
+
+            var duration = DateTimeOffset.UtcNow - startTime;
+            var content = result.Content ?? "Unable to generate summary.";
+
+            // Add assistant response
+            _conversationManager.AddAssistantTurn(content, correlationId, ContentType.Text);
+
+            var response = new AgentResponse
+            {
+                CorrelationId = correlationId,
+                Content = content,
+                ContentType = ContentType.Text,
+                ProcessingTimeMs = (int)duration.TotalMilliseconds,
+                ModelUsed = _skOptions.Model
+            };
+
+            _logger.LogResponse(response);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(correlationId, ex, "Error generating summary");
+            return CreateErrorResponse(correlationId, ex);
+        }
+    }
+
+    /// <summary>
     /// Formats response content appropriately based on content type detection.
     /// Handles CSV data, HTML tables, and plain text.
     /// Returns formatted content and appropriate content type.

@@ -5,8 +5,8 @@
 This guide covers setup, workflows, and troubleshooting for the Excel Local MCP project.
 
 **Status:** 
-- ✅ **CLI Agent** - Stable, well-tested, recommended for daily use
-- ⚠️ **Web Chat** - Functional, needs validation testing before broad use
+- ✅ **CLI Agent** - Stable, well-tested, recommended for terminal users
+- ✅ **Web Chat** - Feature complete, recommended for browser users
 
 ## Prerequisites
 
@@ -91,6 +91,22 @@ Type natural language queries in the input box:
 - "Search for Laptop in the workbook"
 - "Find all mentions of Contoso"
 - "Where does 'revenue' appear?"
+
+**Advanced Filtering:**
+- "Show sales greater than 5000"
+- "Find customers in NY"
+- "Show items with price between 10 and 20"
+
+**Cross-Sheet Analysis:**
+- "Compare Sales and Inventory for matching products"
+- "Find all mentions of Project X across all sheets"
+
+### 6. Advanced Features
+
+- **Summarize:** Click the "Summarize" button to get a concise report of your conversation and findings.
+- **Export Chat:** Click "Export Chat" to download the full conversation history as a Markdown file.
+- **Export Data:** When viewing a table, click "Export CSV" to download the data.
+- **Context Awareness:** The agent remembers previous questions. You can ask "Show me the first one" after listing sheets.
 
 The system will:
 - Automatically select the right MCP tool based on your question
@@ -605,9 +621,9 @@ print(f"Workbook has {len(structure['worksheets'])} sheets")
 
 ---
 
-## Using the Web Chat Interface (Work in Progress)
+## Using the Web Chat Interface
 
-**Status:** Functional but needs validation testing. Use CLI agent for critical work.
+**Status:** Feature complete.
 
 ### Prerequisites
 - .NET 9.0 SDK
@@ -639,10 +655,12 @@ dotnet run --project src/ExcelMcp.ChatWeb
 
 ### Features
 - ✅ Workbook-agnostic prompts (same as CLI)
-- ✅ HTML table rendering
+- ✅ HTML table rendering with filtering
 - ✅ Linux/Raspberry Pi support (ARM64)
 - ✅ Conversation history
 - ✅ Suggested queries
+- ✅ Export to Markdown/CSV
+- ✅ Multi-turn context
 
 ### Troubleshooting
 - **Port conflict:** Use `ASPNETCORE_URLS="http://localhost:5001"`

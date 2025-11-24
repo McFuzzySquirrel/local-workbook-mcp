@@ -31,18 +31,21 @@ Local Model Context Protocol server and CLI tools for conversational analysis of
 
 ### Web Chat UI
 
-> 📸 Screenshot coming soon
-> 
+![Web Chat UI](docs/screenshots/webchat02.png)
+
 > *The web UI features a clean Blazor interface with:*
 > - *File upload for workbooks*
-> - *Chat-style conversation interface*
-> - *Proper HTML table rendering*
+> - *Chat-style conversation interface with multi-turn context*
+> - *Proper HTML table rendering with filtering*
+> - *Cross-sheet analysis capabilities*
+> - *Export conversation and data to CSV/Markdown*
 > - *Suggested queries in sidebar*
 > - *Conversation history*
 
 ## Features
 
 ✅ **Semantic Kernel CLI Agent** - Beautiful terminal UI powered by [Spectre.Console](https://spectreconsole.net/)  
+✅ **Web Chat Interface** - Full-featured browser UI with export and filtering  
 ✅ **Debug Logging** - See exactly which tools the LLM calls and when  
 ✅ **Workbook Switching** - Load different workbooks without restarting  
 ✅ **MCP Server** - Standards-compliant Model Context Protocol server  
@@ -93,14 +96,16 @@ See the evolving roadmap in [docs/FutureFeatures.md](docs/FutureFeatures.md). Hi
   - ✅ Works with any workbook (no assumptions)
   - ✅ Tested on Windows, Linux (Raspberry Pi)
 
-#### Web Chat (Functional - Needs Validation ⚠️)
+#### Web Chat (Feature Complete ✅)
 - **`src/ExcelMcp.ChatWeb`** – ASP.NET Blazor Server web UI
   - ✅ Browser-based chat interface
   - ✅ File upload for workbooks
-  - ✅ HTML table rendering
+  - ✅ HTML table rendering with filtering
+  - ✅ Multi-turn conversation context
+  - ✅ Cross-sheet analysis
+  - ✅ Export to Markdown/CSV
   - ✅ Workbook-agnostic prompts
   - ✅ Builds on Linux ARM64
-  - ⏳ Needs manual validation testing (see [WEB-CHAT-ROADMAP.md](WEB-CHAT-ROADMAP.md))
 
 ### Documentation
 - **`docs/UserGuide.md`** – Extended walkthrough covering setup, workflows, and troubleshooting
@@ -155,9 +160,9 @@ dotnet run --project src/ExcelMcp.SkAgent -- --workbook "test-data/ProjectTracki
 
 **See:** [docs/SkAgentQuickStart.md](docs/SkAgentQuickStart.md) for detailed guide.
 
-### Web Chat (For Testing - Linux/Raspberry Pi Supported)
+### Web Chat (Feature Complete)
 
-The web chat provides a browser-based interface. Currently functional but needs validation testing.
+The web chat provides a browser-based interface with advanced features like filtering and export.
 
 ```bash
 # Linux/Raspberry Pi (Recommended)
@@ -172,20 +177,14 @@ dotnet run --project src/ExcelMcp.ChatWeb
 **What Works:**
 - ✅ Browser-based chat interface
 - ✅ File upload for workbooks  
-- ✅ HTML table rendering (fixed Nov 1)
-- ✅ Workbook-agnostic prompts (learned from CLI)
-- ✅ Conversation history
+- ✅ HTML table rendering with filtering
+- ✅ Multi-turn conversation context
+- ✅ Cross-sheet analysis
+- ✅ Export conversation and data
 - ✅ Runs on Raspberry Pi OS (ARM64)
 
-**What Needs Testing:**
-- ⏳ Manual validation (load, query, verify results)
-- ⏳ Error handling scenarios
-- ⏳ Performance benchmarking
-- ⏳ Cross-browser compatibility
-
 **See:** 
-- [WEB-CHAT-ROADMAP.md](WEB-CHAT-ROADMAP.md) - Testing checklist & roadmap
-- [GETTING-BACK-ON-TRACK.md](GETTING-BACK-ON-TRACK.md) - Current status & next steps
+- [docs/UserGuide.md](docs/UserGuide.md) - Detailed usage instructions
 - [docs/WebChatImprovements.md](docs/WebChatImprovements.md) - Technical details
 
 ### MCP Server and CLI Client
@@ -241,14 +240,14 @@ Package each component as a self-contained, single-file executable:
 pwsh -File scripts/package-server.ps1   # MCP Server
 pwsh -File scripts/package-client.ps1   # CLI Client
 pwsh -File scripts/package-skagent.ps1  # CLI Agent (Recommended - Well Tested ✅)
-pwsh -File scripts/package-chatweb.ps1  # Web Chat (Functional - Needs Testing ⚠️)
+pwsh -File scripts/package-chatweb.ps1  # Web Chat (Feature Complete ✅)
 ```
 
 Each script publishes to `dist/<rid>/<AppName>` with platform-specific launch helpers (`.ps1`, `.sh`, `.bat`).
 
 **Recommended for users:** Start with `package-skagent.ps1` (CLI agent) as it's been thoroughly tested.
 
-**For developers:** The web chat works on Linux/Raspberry Pi but needs validation testing before broad use. See [WEB-CHAT-ROADMAP.md](WEB-CHAT-ROADMAP.md) for testing checklist.
+**For developers:** The web chat works on Linux/Raspberry Pi and is feature complete. See [WEB-CHAT-ROADMAP.md](WEB-CHAT-ROADMAP.md) for platform details.
 
 Pass `-Runtime` (e.g., `linux-x64`, `linux-arm64`) or `-SkipZip` as needed.
 
@@ -267,7 +266,7 @@ Point your MCP-capable agent at the packaged server or use the CLI/web app launc
 - **[ClosedXML](https://github.com/ClosedXML/ClosedXML)** - Excel file manipulation without Office dependencies
 - **[Model Context Protocol](https://modelcontextprotocol.io/)** - Anthropic's standard for AI-to-tool communication
 
-Special thanks to the Spectre.Console team for making terminal apps beautiful! 🎨
+Special thanks to the Spectre.Console team for making terminal apps beautiful! 
 
 ---
 
@@ -321,6 +320,7 @@ dotnet run --project src/ExcelMcp.SkAgent
 ## Documentation
 
 - **[User Guide](docs/UserGuide.md)** - Complete setup and workflow guide
+- **[Architecture Blueprint](docs/Project_Architecture_Blueprint.md)** - Comprehensive architectural documentation
 - **[SK Agent Quick Start](docs/SkAgentQuickStart.md)** - CLI agent tutorial
 - **[Debug Logging](docs/SkAgentDebugLog.md)** - Understanding tool calls
 - **[Sample Workbooks](test-data/README.md)** - Test data reference

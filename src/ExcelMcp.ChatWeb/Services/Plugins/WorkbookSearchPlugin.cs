@@ -50,9 +50,56 @@ public class WorkbookSearchPlugin
 
             var result = await _mcpClient.CallToolAsync("excel-search", arguments, CancellationToken.None);
             
-            if (!result.IsError && result.Content != null)
+            if (!result.IsError && result.Content != null && result.Content.Count > 0)
             {
-                return result.Content.ToString() ?? CreateErrorResponse("MCP_ERROR", "Empty response from MCP server");
+                // Parse the raw JSON response to group by sheet
+                try 
+                {
+                    var json = result.Content[0].Text;
+                    if (string.IsNullOrEmpty(json)) return CreateErrorResponse("MCP_ERROR", "Empty response from MCP server");
+
+                    // We need to deserialize to a structure that matches the MCP tool output
+                    // The tool returns { rows: [...], hasMore: bool }
+                    var jsonNode = JsonNode.Parse(json);
+                    var rowsNode = jsonNode?["rows"]?.AsArray();
+                    
+                    if (rowsNode == null || rowsNode.Count == 0)
+                    {
+                        return JsonSerializer.Serialize(new { message = "No matches found." });
+                    }
+
+                    // Group rows by worksheet
+                    var groupedResults = new Dictionary<string, List<object>>();
+                    
+                    foreach (var row in rowsNode)
+                    {
+                        var sheetName = row?["worksheetName"]?.ToString();
+                        if (!string.IsNullOrEmpty(sheetName))
+                        {
+                            if (!groupedResults.ContainsKey(sheetName))
+                            {
+                                groupedResults[sheetName] = new List<object>();
+                            }
+                            groupedResults[sheetName].Add(row);
+                        }
+                    }
+
+                    // Create a summary response
+                    var summary = new
+                    {
+                        totalMatches = rowsNode.Count,
+                        hasMore = jsonNode?["hasMore"]?.GetValue<bool>() ?? false,
+                        sheets = groupedResults.Keys.ToList(),
+                        resultsBySheet = groupedResults
+                    };
+
+                    return JsonSerializer.Serialize(summary);
+                }
+                catch (Exception parseEx)
+                {
+                    // Fallback to raw string if parsing fails
+                    return result.Content.ToString() ?? CreateErrorResponse("MCP_ERROR", "Empty response from MCP server");
+                }
             }
 
             return CreateErrorResponse("MCP_ERROR", "Failed to search workbook");

@@ -62,6 +62,7 @@ nunit-*.xml
 !.env.example
 
 # IDE files
+.specify/
 .vscode/
 .idea/
 *.swp
@@ -77,3 +78,7 @@ logs/
 # Temporary files
 *.tmp
 *.bak
+
+# User-specific files
+*.user
+*.suo

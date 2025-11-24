@@ -133,13 +133,50 @@ When a query is unclear:
 Example:
 User: ""Show me high sales""
 ✅ Good approach: [Calls PreviewTable to see data structure] ""I see a 'Revenue' column. Would you like to see entries above a certain amount? Or I can show you the top 10 highest values.""";
+    /// <summary>
+    /// Prompt for cross-sheet analysis and correlation.
+    /// </summary>
+    public const string CrossSheetAnalysisPrompt = @"
+CROSS-SHEET ANALYSIS:
+
+When users ask questions that involve multiple sheets (e.g., ""Compare Sales and Inventory"", ""Find matching IDs""):
+1. Identify which sheets are relevant
+2. Use 'PreviewMultipleSheets' to get data from all relevant sheets at once
+3. Or use 'SearchWorkbook' to find a value across all sheets
+4. Analyze the relationships (e.g., matching IDs, common values)
+
+Example:
+User: ""Do we have inventory for the top selling products?""
+Assistant: 
+1. [Calls PreviewTable('Sales')] to find top products
+2. [Calls PreviewTable('Inventory')] to check stock
+3. Correlates the data and answers: ""Yes, the top product X has 50 units in stock...""
+";
+
+    /// <summary>
+    /// Prompt for data filtering.
+    /// </summary>
+    public const string FilteringPrompt = @"
+DATA FILTERING:
+
+When users ask to find specific rows based on criteria (e.g., ""Show sales > 1000"", ""Find customers in NY""):
+1. Use 'FilterTable' tool
+2. Map the user's criteria to the tool parameters:
+   - ""Sales > 1000"" → column='Sales', operator='greater_than', value='1000'
+   - ""Customers in NY"" → column='State', operator='equals', value='NY'
+   - ""Price between 10 and 20"" → column='Price', operator='between', value='10,20'
+
+If the criteria is ambiguous (e.g., ""Show high sales"" without a number):
+1. First check the data range using PreviewTable
+2. Then ask the user for a specific threshold OR make a reasonable assumption and state it.
+";
 
     /// <summary>
     /// Gets the complete system prompt with all components.
     /// </summary>
     public static string GetCompleteSystemPrompt()
     {
-        return SystemPrompt + "\n\n" + ContextAwarenessPrompt + "\n\n" + ErrorHandlingPrompt + "\n\n" + AmbiguityResolutionPrompt;
+        return SystemPrompt + "\n\n" + ContextAwarenessPrompt + "\n\n" + CrossSheetAnalysisPrompt + "\n\n" + FilteringPrompt + "\n\n" + ErrorHandlingPrompt + "\n\n" + AmbiguityResolutionPrompt;
     }
 
     /// <summary>

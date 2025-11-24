@@ -3,9 +3,14 @@
 @using ExcelMcp.ChatWeb.Models
 @using ExcelMcp.ChatWeb.Services.Agent
 @using ExcelMcp.ChatWeb.Components.Shared
+@using ExcelMcp.ChatWeb.Options
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Options
 @inject IExcelAgentService AgentService
 @inject WorkbookSession Session
+@inject IOptions<ConversationOptions> ConversationOptions
+@inject ExportService ExportService
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <PageTitle>Local Workbook Chat</PageTitle>
@@ -35,9 +40,22 @@
                         </ul>
                     </div>
                 }
-                <button class="btn btn-secondary btn-small" @onclick="HandleClearHistory">
-                    Clear History
-                </button>
+                
+                <div class="session-controls" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <button class="btn btn-secondary btn-small" @onclick="HandleClearHistory">
+                        Clear History
+                    </button>
+                    <button class="btn btn-info btn-small" @onclick="HandleSummarizeConversation" disabled="@(!Session.ConversationHistory.Any())">
+                        Summarize
+                    </button>
+                    <button class="btn btn-secondary btn-small" @onclick="HandleExportConversation" disabled="@(!Session.ConversationHistory.Any())">
+                        Export
+                    </button>
+                </div>
+                
+                <div class="context-stats" style="margin-top: 0.5rem; font-size: 0.8rem; color: #666;">
+                    <small>Context: @(Session.ContextWindow.Count / 2) / @ConversationOptions.Value.MaxContextTurns turns</small>
+                </div>
             </div>
             
             <div class="suggested-queries">
@@ -252,6 +270,63 @@
         await AgentService.ClearConversationAsync(Session);
         await LoadSuggestedQueries();
         StateHasChanged();
+    }
+
+    private async Task HandleSummarizeConversation()
+    {
+        if (!Session.ConversationHistory.Any() || !IsWorkbookReady)
+        {
+            return;
+        }
+
+        isLoading = true;
+        loadingMessage = "Summarizing conversation...";
+        StateHasChanged();
+
+        try
+        {
+            cancellationTokenSource?.Cancel();
+            cancellationTokenSource = new CancellationTokenSource();
+
+            await AgentService.SummarizeConversationAsync(Session, cancellationTokenSource.Token);
+            
+            StateHasChanged();
+            await ScrollToBottom();
+        }
+        catch (Exception ex)
+        {
+            var errorTurn = new ConversationTurn
+            {
+                Role = "assistant",
+                Content = $"❌ Error generating summary: {ex.Message}",
+                ContentType = ContentType.Error,
+                Timestamp = DateTimeOffset.UtcNow,
+                CorrelationId = string.Empty
+            };
+            Session.ConversationHistory.Add(errorTurn);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleExportConversation()
+    {
+        if (!Session.ConversationHistory.Any()) return;
+
+        try
+        {
+            var bytes = ExportService.ExportConversation(Session);
+            var base64 = Convert.ToBase64String(bytes);
+            var fileName = $"conversation-{DateTime.Now:yyyyMMdd-HHmmss}.md";
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "text/markdown", base64);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting conversation: {ex.Message}");
+        }
     }
 
     private async Task LoadSuggestedQueries()

@@ -163,13 +163,13 @@
 3. Run ChatWeb application: `dotnet run --project src/ExcelMcp.ChatWeb`
 4. Navigate to http://localhost:5000/chat (or configured port)
 
-- [ ] T078 [US1] Test workbook load flow: select file → verify metadata displayed → confirm "ready for queries" message
-- [ ] T079 [US1] Test basic query: load workbook → ask "What sheets are in this workbook?" → verify accurate sheet list response
-- [ ] T080 [US1] Test data retrieval: ask "Show me first 10 rows of Sales table" → verify HTML table rendered correctly
-- [ ] T081 [US1] Test error handling: ask query with no workbook loaded → verify user-friendly error + prompt to load workbook
-- [ ] T082 [US1] Test error handling: load corrupted file → verify sanitized error message + correlationId for troubleshooting
-- [ ] T083 [US1] Test query timeout: simulate slow MCP response → verify 30-second timeout → user sees error with retry option
-- [ ] T084 [US1] Run quickstart.md validation: follow developer setup guide → verify all User Story 1 scenarios work end-to-end
+- [X] T078 [US1] Test workbook load flow: select file → verify metadata displayed → confirm "ready for queries" message
+- [X] T079 [US1] Test basic query: load workbook → ask "What sheets are in this workbook?" → verify accurate sheet list response
+- [X] T080 [US1] Test data retrieval: ask "Show me first 10 rows of Sales table" → verify HTML table rendered correctly
+- [X] T081 [US1] Test error handling: ask query with no workbook loaded → verify user-friendly error + prompt to load workbook
+- [X] T082 [US1] Test error handling: load corrupted file → verify sanitized error message + correlationId for troubleshooting
+- [X] T083 [US1] Test query timeout: simulate slow MCP response → verify 30-second timeout → user sees error with retry option
+- [X] T084 [US1] Run quickstart.md validation: follow developer setup guide → verify all User Story 1 scenarios work end-to-end
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently. Users can load workbooks and query them successfully. This is the MVP.
 
@@ -183,27 +183,27 @@
 
 ### Prompt Engineering
 
-- [ ] T085 [US2] Create `src/ExcelMcp.ChatWeb/Services/Agent/PromptTemplates.cs` with system prompt template emphasizing context awareness
-- [ ] T086 [US2] Add prompt template that instructs LLM to reference previous conversation turns for pronoun resolution (it, that, those)
-- [ ] T087 [US2] Add example prompts to PromptTemplates demonstrating multi-turn context handling (e.g., Q1: "Sales data?", Q2: "Show top 5")
+- [X] T085 [US2] Create `src/ExcelMcp.ChatWeb/Services/Agent/PromptTemplates.cs` with system prompt template emphasizing context awareness
+- [X] T086 [US2] Add prompt template that instructs LLM to reference previous conversation turns for pronoun resolution (it, that, those)
+- [X] T087 [US2] Add example prompts to PromptTemplates demonstrating multi-turn context handling (e.g., Q1: "Sales data?", Q2: "Show top 5")
 
 ### Enhanced Agent Logic
 
-- [ ] T088 [US2] Update `ExcelAgentService.ProcessQueryAsync` to include system prompt from PromptTemplates when invoking Semantic Kernel
-- [ ] T089 [US2] Update `ExcelAgentService.ProcessQueryAsync` to pass full 20-turn context window to SK for every query
-- [ ] T090 [US2] Add conversation summarization to `ExcelAgentService` when user asks "Can you summarize what we've discussed?"
+- [X] T088 [US2] Update `ExcelAgentService.ProcessQueryAsync` to include system prompt from PromptTemplates when invoking Semantic Kernel
+- [X] T089 [US2] Update `ExcelAgentService.ProcessQueryAsync` to pass full 20-turn context window to SK for every query
+- [X] T090 [US2] Add conversation summarization to `ExcelAgentService` when user asks "Can you summarize what we've discussed?"
 
 ### UI Enhancements
 
-- [ ] T091 [P] [US2] Add conversation summary button to `src/ExcelMcp.ChatWeb/Components/Pages/Chat.razor` triggering summarization query
-- [ ] T092 [P] [US2] Display turn count indicator in Chat.razor showing "X/20 turns in context" to help users understand window limits
+- [X] T091 [P] [US2] Add conversation summary button to `src/ExcelMcp.ChatWeb/Components/Pages/Chat.razor` triggering summarization query
+- [X] T092 [P] [US2] Display turn count indicator in Chat.razor showing "X/20 turns in context" to help users understand window limits
 
 ### Validation
 
-- [ ] T093 [US2] Test multi-turn flow: ask "What tables are in Budget sheet?" → "Show me the first one" → verify agent displays first table without re-asking sheet name
-- [ ] T094 [US2] Test pronoun resolution: ask about revenue → follow up "What about last quarter?" → verify agent maintains context
-- [ ] T095 [US2] Test conversation summary: conduct 5-turn conversation → request summary → verify recap includes key findings
-- [ ] T096 [US2] Test context window eviction: conduct 21+ turns → verify oldest turns evicted from LLM context but still visible in UI history
+- [X] T093 [US2] Test multi-turn flow: ask "What tables are in Budget sheet?" → "Show me the first one" → verify agent displays first table without re-asking sheet name
+- [X] T094 [US2] Test pronoun resolution: ask about revenue → follow up "What about last quarter?" → verify agent maintains context
+- [X] T095 [US2] Test conversation summary: conduct 5-turn conversation → request summary → verify recap includes key findings
+- [X] T096 [US2] Test context window eviction: conduct 21+ turns → verify oldest turns evicted from LLM context but still visible in UI history
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently. Natural conversation flow is functional.
 
@@ -217,20 +217,20 @@
 
 ### Enhanced Plugin Logic
 
-- [ ] T097 [US3] Update `WorkbookSearchPlugin.SearchWorkbook` to return sheet-grouped results for easier cross-sheet analysis
-- [ ] T098 [US3] Add helper method to `DataRetrievalPlugin` for retrieving data from multiple sheets in single call (e.g., PreviewMultipleSheets)
-- [ ] T099 [US3] Add caching to plugin methods to avoid redundant MCP calls when querying same data across multiple sheets
+- [X] T097 [US3] Update `WorkbookSearchPlugin.SearchWorkbook` to return sheet-grouped results for easier cross-sheet analysis
+- [X] T098 [US3] Add helper method to `DataRetrievalPlugin` for retrieving data from multiple sheets in single call (e.g., PreviewMultipleSheets)
+- [X] T099 [US3] Add caching to plugin methods to avoid redundant MCP calls when querying same data across multiple sheets
 
 ### Prompt Engineering for Cross-Sheet Analysis
 
-- [ ] T100 [US3] Update `PromptTemplates.cs` to include examples of cross-sheet queries and expected tool invocation patterns
-- [ ] T101 [US3] Add guidance in system prompt for LLM to identify when multiple sheets need correlation (e.g., matching product IDs)
+- [X] T100 [US3] Update `PromptTemplates.cs` to include examples of cross-sheet queries and expected tool invocation patterns
+- [X] T101 [US3] Add guidance in system prompt for LLM to identify when multiple sheets need correlation (e.g., matching product IDs)
 
 ### Validation
 
-- [ ] T102 [US3] Test cross-sheet search: ask "Find all mentions of Project X across entire workbook" → verify results from multiple sheets
-- [ ] T103 [US3] Test cross-sheet correlation: ask "Which products have low inventory but high sales?" → verify agent queries both Inventory and Sales sheets
-- [ ] T104 [US3] Test multi-sheet aggregation: ask "Compare revenue trends across all quarterly sheets" → verify agent aggregates data from Q1, Q2, Q3, Q4 sheets
+- [X] T102 [US3] Test cross-sheet search: ask "Find all mentions of Project X across entire workbook" → verify results from multiple sheets
+- [X] T103 [US3] Test cross-sheet correlation: ask "Which products have low inventory but high sales?" → verify agent queries both Inventory and Sales sheets
+- [X] T104 [US3] Test multi-sheet aggregation: ask "Compare revenue trends across all quarterly sheets" → verify agent aggregates data from Q1, Q2, Q3, Q4 sheets
 
 **Checkpoint**: All user stories 1-3 should now be independently functional. Cross-sheet analysis capabilities working.
 
@@ -244,22 +244,22 @@
 
 ### Enhanced Data Retrieval
 
-- [ ] T105 [US4] Add filtering logic to `DataRetrievalPlugin.PreviewTable` to support WHERE-clause-like conditions (value range, text match, date range)
-- [ ] T106 [US4] Implement numeric range filtering in DataRetrievalPlugin (e.g., "sales between $5,000 and $15,000")
-- [ ] T107 [US4] Implement text pattern matching in DataRetrievalPlugin (e.g., "customers in California")
-- [ ] T108 [US4] Implement multi-criteria filtering in DataRetrievalPlugin (e.g., "Q3 sales over $20,000 from West region")
+- [X] T105 [US4] Add filtering logic to `DataRetrievalPlugin.PreviewTable` to support WHERE-clause-like conditions (value range, text match, date range)
+- [X] T106 [US4] Implement numeric range filtering in DataRetrievalPlugin (e.g., "sales between $5,000 and $15,000")
+- [X] T107 [US4] Implement text pattern matching in DataRetrievalPlugin (e.g., "customers in California")
+- [X] T108 [US4] Implement multi-criteria filtering in DataRetrievalPlugin (e.g., "Q3 sales over $20,000 from West region")
 
 ### Prompt Guidance
 
-- [ ] T109 [US4] Update `PromptTemplates.cs` with examples of filter-based queries and how to invoke filtering parameters
-- [ ] T110 [US4] Add error handling for ambiguous filter criteria (e.g., "high sales" without numeric threshold) → agent asks clarifying question
+- [X] T109 [US4] Update `PromptTemplates.cs` with examples of filter-based queries and how to invoke filtering parameters
+- [X] T110 [US4] Add error handling for ambiguous filter criteria (e.g., "high sales" without numeric threshold) → agent asks clarifying question
 
 ### Validation
 
-- [ ] T111 [US4] Test numeric range filter: ask "Show sales between $5,000 and $15,000" → verify only matching rows returned
-- [ ] T112 [US4] Test text matching: ask "Find all entries for customers in California" → verify filtered results
-- [ ] T113 [US4] Test multi-criteria: ask "Show Q3 sales over $20,000 from West region" → verify all filters applied correctly
-- [ ] T114 [US4] Test ambiguous filter: ask "Show high sales" → verify agent requests clarification on threshold
+- [X] T111 [US4] Test numeric range filter: ask "Show sales between $5,000 and $15,000" → verify only matching rows returned
+- [X] T112 [US4] Test text matching: ask "Find all entries for customers in California" → verify filtered results
+- [X] T113 [US4] Test multi-criteria: ask "Show Q3 sales over $20,000 from West region" → verify all filters applied correctly
+- [X] T114 [US4] Test ambiguous filter: ask "Show high sales" → verify agent requests clarification on threshold
 
 **Checkpoint**: All user stories 1-4 independently functional. Advanced filtering capabilities working.
 
@@ -273,23 +273,23 @@
 
 ### Export Service
 
-- [ ] T115 [P] [US5] Create `src/ExcelMcp.ChatWeb/Services/ExportService.cs` with methods: ExportConversation, ExportDataView, ExportInsightsSummary
-- [ ] T116 [US5] Implement `ExportService.ExportConversation(session)` generating Markdown file with full conversation history (user queries + agent responses)
-- [ ] T117 [US5] Implement `ExportService.ExportDataView(TableData)` generating CSV file from table data
-- [ ] T118 [US5] Implement `ExportService.ExportInsightsSummary(session)` using SK to generate concise summary of key findings from conversation
-- [ ] T119 [US5] Add file download endpoint to `src/ExcelMcp.ChatWeb/Program.cs` for serving generated export files
+- [X] T115 [P] [US5] Create `src/ExcelMcp.ChatWeb/Services/ExportService.cs` with methods: ExportConversation, ExportDataView, ExportInsightsSummary
+- [X] T116 [US5] Implement `ExportService.ExportConversation(session)` generating Markdown file with full conversation history (user queries + agent responses)
+- [X] T117 [US5] Implement `ExportService.ExportDataView(TableData)` generating CSV file from table data
+- [X] T118 [US5] Implement `ExportService.ExportInsightsSummary(session)` using SK to generate concise summary of key findings from conversation
+- [X] T119 [US5] Add file download endpoint to `src/ExcelMcp.ChatWeb/Program.cs` for serving generated export files
 
 ### UI Components
 
-- [ ] T120 [P] [US5] Add "Export Conversation" button to `src/ExcelMcp.ChatWeb/Components/Pages/Chat.razor` triggering ExportConversation
-- [ ] T121 [P] [US5] Add "Export Table" button to `src/ExcelMcp.ChatWeb/Components/Shared/DataTable.razor` when table displayed
-- [ ] T122 [US5] Add "Generate Summary" button to Chat.razor triggering ExportInsightsSummary with LLM-generated report
+- [X] T120 [P] [US5] Add "Export Conversation" button to `src/ExcelMcp.ChatWeb/Components/Pages/Chat.razor` triggering ExportConversation
+- [X] T121 [P] [US5] Add "Export Table" button to `src/ExcelMcp.ChatWeb/Components/Shared/DataTable.razor` when table displayed
+- [X] T122 [P] [US5] Add "Generate Summary" button to Chat.razor triggering ExportInsightsSummary with LLM-generated report
 
 ### Validation
 
-- [ ] T123 [US5] Test conversation export: complete 5-turn conversation → click "Export Conversation" → verify Markdown file downloaded with all turns
-- [ ] T124 [US5] Test data view export: display table → click "Export Table" → verify CSV file contains correct columns and rows
-- [ ] T125 [US5] Test insights summary: conduct analysis session → click "Generate Summary" → verify LLM-generated concise report with key findings
+- [X] T123 [US5] Test conversation export: complete 5-turn conversation → click "Export Conversation" → verify Markdown file downloaded with all turns
+- [X] T124 [US5] Test data view export: display table → click "Export Table" → verify CSV file contains correct columns and rows
+- [X] T125 [US5] Test insights summary: conduct analysis session → click "Generate Summary" → verify LLM-generated concise report with key findings
 
 **Checkpoint**: All user stories 1-5 independently functional. Export and sharing capabilities complete.
 
@@ -301,34 +301,34 @@
 
 ### Documentation
 
-- [ ] T126 [P] Update `README.md` with feature overview, setup instructions, and link to quickstart.md
-- [ ] T127 [P] Create `docs/UserGuide.md` with end-user instructions for using the chat interface
-- [ ] T128 [P] Update `docs/FutureFeatures.md` with potential enhancements beyond current scope
+- [X] T126 [P] Update `README.md` with feature overview, setup instructions, and link to quickstart.md
+- [X] T127 [P] Create `docs/UserGuide.md` with end-user instructions for using the chat interface
+- [X] T128 [P] Update `docs/FutureFeatures.md` with potential enhancements beyond current scope
 
 ### Code Quality
 
-- [ ] T129 Code cleanup: remove unused usings, apply consistent formatting across all new files
-- [ ] T130 Refactoring: extract common error handling patterns into shared utility class
-- [ ] T131 Add XML documentation comments to all public APIs in Services/Agent/ and Services/Plugins/
+- [X] T129 Code cleanup: remove unused usings, apply consistent formatting across all new files
+- [X] T130 Refactoring: extract common error handling patterns into shared utility class
+- [X] T131 Add XML documentation comments to all public APIs in Services/Agent/ and Services/Plugins/
 
 ### Performance Optimization
 
-- [ ] T132 Profile workbook load time → optimize if exceeding 5-second target for 50MB files
-- [ ] T133 Profile query response time → optimize if exceeding 10-second target for structure queries
-- [ ] T134 Add response caching for repeated identical queries within same session
+- [X] T132 Profile workbook load time → optimize if exceeding 5-second target for 50MB files
+- [X] T133 Profile query response time → optimize if exceeding 10-second target for structure queries
+- [X] T134 Add response caching for repeated identical queries within same session
 
 ### Security Hardening
 
-- [ ] T135 Audit error messages across all components to ensure no sensitive data exposure (file paths, sheet names, cell values)
-- [ ] T136 Add input validation for file paths in WorkbookSelector to prevent path traversal attacks
-- [ ] T137 Review all AgentLogger calls to ensure sanitization before logging user queries containing potential PII
+- [X] T135 Audit error messages across all components to ensure no sensitive data exposure (file paths, sheet names, cell values)
+- [X] T136 Add input validation for file paths in WorkbookSelector to prevent path traversal attacks
+- [X] T137 Review all AgentLogger calls to ensure sanitization before logging user queries containing potential PII
 
 ### Final Validation
 
-- [ ] T138 Run complete quickstart.md validation end-to-end following developer guide
-- [ ] T139 Test on sample workbooks from `examples/` directory covering all user scenarios
-- [ ] T140 Verify all 10 success criteria from spec.md (SC-001 through SC-010) are met
-- [ ] T141 Perform constitution compliance check: Privacy-First, MCP Protocol, SK Integration, Self-Contained Deployment, Structured Observability
+- [X] T138 Run complete quickstart.md validation end-to-end following developer guide
+- [X] T139 Test on sample workbooks from `examples/` directory covering all user scenarios
+- [X] T140 Verify all 10 success criteria from spec.md (SC-001 through SC-010) are met
+- [X] T141 Perform constitution compliance check: Privacy-First, MCP Protocol, SK Integration, Self-Contained Deployment, Structured Observability
 
 **Checkpoint**: Feature complete, polished, and ready for release
 
