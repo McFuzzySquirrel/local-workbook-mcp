@@ -8,10 +8,31 @@ public sealed class ExcelWorkbookServiceTests
 {
     private static string GetTestDataPath(string fileName)
     {
-        // Navigate from test output to test-data directory
+        // Navigate from test output to test-data directory.
+        // The test-data directory is located at the repository root.
+        // Tests run from bin/Debug/net9.0, so we navigate up to find the repository root.
         var currentDir = Directory.GetCurrentDirectory();
-        var projectRoot = Path.GetFullPath(Path.Combine(currentDir, "..", "..", "..", "..", ".."));
-        return Path.Combine(projectRoot, "test-data", fileName);
+        var candidatePath = Path.GetFullPath(Path.Combine(currentDir, "..", "..", "..", "..", "..", "test-data", fileName));
+        
+        if (File.Exists(candidatePath))
+        {
+            return candidatePath;
+        }
+        
+        // Fallback: try searching up the directory tree for test-data
+        var dir = new DirectoryInfo(currentDir);
+        while (dir != null)
+        {
+            var testDataDir = Path.Combine(dir.FullName, "test-data", fileName);
+            if (File.Exists(testDataDir))
+            {
+                return testDataDir;
+            }
+            dir = dir.Parent;
+        }
+        
+        // Return the expected path even if not found (test will fail with descriptive error)
+        return candidatePath;
     }
 
     [Fact]
@@ -128,6 +149,7 @@ public sealed class ExcelWorkbookServiceTests
         var path = GetTestDataPath("ProjectTracking.xlsx");
         var service = new ExcelWorkbookService(path);
 
+        // Test that SearchAsync handles null query gracefully (returns empty results)
         var args = new ExcelSearchArguments(null!);
         var result = await service.SearchAsync(args, CancellationToken.None);
 
