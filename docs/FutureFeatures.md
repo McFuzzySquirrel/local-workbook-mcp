@@ -1,6 +1,6 @@
 # Future Features & Roadmap
 
-**Last Updated:** November 1, 2025  
+**Last Updated:** November 27, 2025  
 **Project Status:** Feature Complete - CLI and Web Chat fully functional
 
 ---
@@ -15,6 +15,7 @@
 - ✅ Linux/Raspberry Pi support
 - ✅ Sample workbooks
 - ✅ HTML table rendering fix (Nov 1)
+- ✅ Pivot table analysis support (Nov 27)
 - ✅ User Story 1: Basic Workbook Querying
 - ✅ User Story 2: Multi-Turn Conversations
 - ✅ User Story 3: Cross-Sheet Insights
@@ -55,7 +56,6 @@
 - Value distributions
 - Outlier detection
 - Chart generation
-- Pivot table support
 
 ---
 
