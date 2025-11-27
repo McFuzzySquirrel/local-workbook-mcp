@@ -459,27 +459,27 @@ public sealed class ExcelWorkbookService
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var rowFields = pivot.RowLabels.Select(field => new PivotFieldInfo(
-                    field.CustomName,
-                    field.SourceName,
+                    field.CustomName ?? field.SourceName ?? "Unknown",
+                    field.SourceName ?? "Unknown",
                     "Row"
                 )).ToArray();
 
                 var columnFields = pivot.ColumnLabels.Select(field => new PivotFieldInfo(
-                    field.CustomName,
-                    field.SourceName,
+                    field.CustomName ?? field.SourceName ?? "Unknown",
+                    field.SourceName ?? "Unknown",
                     "Column"
                 )).ToArray();
 
                 var dataFields = pivot.Values.Select(field => new PivotFieldInfo(
-                    field.CustomName,
-                    field.SourceName,
+                    field.CustomName ?? field.SourceName ?? "Unknown",
+                    field.SourceName ?? "Unknown",
                     field.SummaryFormula.ToString()
                 )).ToArray();
 
                 var filterFields = arguments.IncludeFilters
                     ? pivot.ReportFilters.Select(field => new PivotFieldInfo(
-                        field.CustomName,
-                        field.SourceName,
+                        field.CustomName ?? field.SourceName ?? "Unknown",
+                        field.SourceName ?? "Unknown",
                         "Filter"
                     )).ToArray()
                     : Array.Empty<PivotFieldInfo>();
@@ -506,10 +506,28 @@ public sealed class ExcelWorkbookService
     private static IReadOnlyList<PivotDataRow> ExtractPivotData(IXLPivotTable pivot, int maxRows)
     {
         var rows = new List<PivotDataRow>();
-        var range = pivot.TargetCell.Worksheet.Range(pivot.TargetCell.Address, pivot.TargetCell.Worksheet.LastCellUsed().Address);
+        
+        var targetCell = pivot.TargetCell;
+        if (targetCell is null)
+        {
+            return rows;
+        }
+        
+        var lastCellUsed = targetCell.Worksheet.LastCellUsed();
+        if (lastCellUsed is null)
+        {
+            return rows;
+        }
+        
+        var range = targetCell.Worksheet.Range(targetCell.Address, lastCellUsed.Address);
         
         var headerRow = range.FirstRow();
         var headers = headerRow.Cells().Select(c => c.GetString()).ToArray();
+        
+        if (headers.Length == 0)
+        {
+            return rows;
+        }
         
         var dataRows = range.RowsUsed().Skip(1).Take(maxRows);
         

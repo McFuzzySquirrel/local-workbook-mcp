@@ -83,6 +83,16 @@ try
             int rows = int.TryParse(rowsStr, out var r) ? r : 10;
             await PreviewAsync(client, sheet, rows);
             break;
+        case "analyze-pivot":
+            var pivotSheet = args.SkipWhile(a => a != "analyze-pivot").Skip(1).FirstOrDefault();
+            if (string.IsNullOrEmpty(pivotSheet))
+            {
+                Console.Error.WriteLine("Error: Worksheet name required.");
+                return 1;
+            }
+            var pivotName = ResolveArgument(args, "--pivot");
+            await AnalyzePivotAsync(client, pivotSheet, pivotName);
+            break;
         default:
             Console.Error.WriteLine($"Unknown command: {command}");
             ShowHelp();
@@ -112,6 +122,8 @@ static void ShowHelp()
     Console.WriteLine("  search <query>          Search the workbook");
     Console.WriteLine("  preview <sheet>         Preview rows from a sheet");
     Console.WriteLine("    --rows <n>            Number of rows to preview (default: 10)");
+    Console.WriteLine("  analyze-pivot <sheet>   Analyze pivot tables in a sheet");
+    Console.WriteLine("    --pivot <name>        Specific pivot table name (optional)");
 }
 
 static string? ResolveArgument(string[] args, string longName, string? shortName = null)
@@ -200,6 +212,29 @@ static async Task PreviewAsync(McpProcessClient client, string sheet, int rows)
     if (result.IsError)
     {
         Console.WriteLine("Preview failed.");
+    }
+    
+    foreach (var content in result.Content)
+    {
+        Console.WriteLine(content.Text);
+    }
+}
+
+static async Task AnalyzePivotAsync(McpProcessClient client, string sheet, string? pivotName)
+{
+    var args = new JsonObject
+    {
+        ["worksheet"] = sheet
+    };
+    if (!string.IsNullOrEmpty(pivotName))
+    {
+        args["pivotTable"] = pivotName;
+    }
+    
+    var result = await client.CallToolAsync("excel-analyze-pivot", args, CancellationToken.None);
+    if (result.IsError)
+    {
+        Console.WriteLine("Pivot analysis failed.");
     }
     
     foreach (var content in result.Content)

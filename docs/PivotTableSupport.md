@@ -69,7 +69,7 @@ Analyze pivot tables in a worksheet, including structure, fields, and aggregated
 
 #### CLI Client
 ```bash
-dotnet run --project src/ExcelMcp.Client -- analyze-pivot Sales --pivot "SalesSummary"
+dotnet run --project src/ExcelMcp.Client -- analyze-pivot SalesPivot --pivot "SalesSummary"
 ```
 
 #### Semantic Kernel Agent
