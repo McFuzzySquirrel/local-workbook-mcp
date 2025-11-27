@@ -46,12 +46,13 @@ Local Model Context Protocol server and CLI tools for conversational analysis of
 
 ✅ **Semantic Kernel CLI Agent** - Beautiful terminal UI powered by [Spectre.Console](https://spectreconsole.net/)  
 ✅ **Web Chat Interface** - Full-featured browser UI with export and filtering  
+✅ **Pivot Table Analysis** - Extract structure and aggregated data from pivot tables  
 ✅ **Debug Logging** - See exactly which tools the LLM calls and when  
 ✅ **Workbook Switching** - Load different workbooks without restarting  
 ✅ **MCP Server** - Standards-compliant Model Context Protocol server  
 ✅ **Sample Workbooks** - Realistic test data (projects, employees, budgets)  
 ✅ **Local-First** - Everything runs on your machine, data never leaves  
-✅ **Cross-Platform** - Windows, Linux, macOS via .NET 9  
+✅ **Cross-Platform** - Windows, Linux, macOS via .NET 9
 
 > **Quick Start:** Jump to [Getting Started](#getting-started) to run in 3 minutes.
 
@@ -322,6 +323,7 @@ dotnet run --project src/ExcelMcp.SkAgent
 - **[User Guide](docs/UserGuide.md)** - Complete setup and workflow guide
 - **[Architecture Blueprint](docs/Project_Architecture_Blueprint.md)** - Comprehensive architectural documentation
 - **[SK Agent Quick Start](docs/SkAgentQuickStart.md)** - CLI agent tutorial
+- **[Pivot Table Support](docs/PivotTableSupport.md)** - Pivot table analysis guide
 - **[Debug Logging](docs/SkAgentDebugLog.md)** - Understanding tool calls
 - **[Sample Workbooks](test-data/README.md)** - Test data reference
 - **[Future Features](docs/FutureFeatures.md)** - Planned enhancements

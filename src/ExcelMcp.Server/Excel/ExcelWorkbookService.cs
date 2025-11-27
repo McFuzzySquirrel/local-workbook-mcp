@@ -59,8 +59,19 @@ public sealed class ExcelWorkbookService
                     ))
                     .ToArray();
 
+                var pivotTables = worksheet.PivotTables
+                    .Select(pivot => new PivotTableMetadata(
+                        pivot.Name,
+                        worksheet.Name,
+                        "Pivot Table",
+                        pivot.RowLabels.Count(),
+                        pivot.ColumnLabels.Count(),
+                        pivot.Values.Count()
+                    ))
+                    .ToArray();
+
                 var columnHeaders = GetWorksheetHeaders(worksheet);
-                worksheets.Add(new WorksheetMetadata(worksheet.Name, tables, columnHeaders));
+                worksheets.Add(new WorksheetMetadata(worksheet.Name, tables, columnHeaders, pivotTables));
             }
 
             var metadata = new WorkbookMetadata(
@@ -418,5 +429,120 @@ public sealed class ExcelWorkbookService
     private static string FormatCell(IXLCell cell)
     {
         return cell.GetFormattedString();
+    }
+
+    public async Task<PivotTableResult> AnalyzePivotTablesAsync(PivotTableArguments arguments, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        if (string.IsNullOrWhiteSpace(arguments.Worksheet))
+        {
+            throw new ArgumentException("Worksheet name is required.", nameof(arguments));
+        }
+
+        return await Task.Run(() =>
+        {
+            using var workbook = new XLWorkbook(_workbookPath);
+            var worksheet = workbook.Worksheets.FirstOrDefault(ws => WorksheetMatches(ws.Name, arguments.Worksheet));
+            
+            if (worksheet is null)
+            {
+                throw new InvalidOperationException($"Worksheet '{arguments.Worksheet}' not found.");
+            }
+
+            var pivotTables = new List<PivotTableInfo>();
+            var pivotsToAnalyze = string.IsNullOrWhiteSpace(arguments.PivotTable)
+                ? worksheet.PivotTables
+                : worksheet.PivotTables.Where(pt => string.Equals(pt.Name, arguments.PivotTable, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var pivot in pivotsToAnalyze)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var rowFields = pivot.RowLabels.Select(field => new PivotFieldInfo(
+                    field.CustomName ?? field.SourceName ?? "Unknown",
+                    field.SourceName ?? "Unknown",
+                    "Row"
+                )).ToArray();
+
+                var columnFields = pivot.ColumnLabels.Select(field => new PivotFieldInfo(
+                    field.CustomName ?? field.SourceName ?? "Unknown",
+                    field.SourceName ?? "Unknown",
+                    "Column"
+                )).ToArray();
+
+                var dataFields = pivot.Values.Select(field => new PivotFieldInfo(
+                    field.CustomName ?? field.SourceName ?? "Unknown",
+                    field.SourceName ?? "Unknown",
+                    field.SummaryFormula.ToString()
+                )).ToArray();
+
+                var filterFields = arguments.IncludeFilters
+                    ? pivot.ReportFilters.Select(field => new PivotFieldInfo(
+                        field.CustomName ?? field.SourceName ?? "Unknown",
+                        field.SourceName ?? "Unknown",
+                        "Filter"
+                    )).ToArray()
+                    : Array.Empty<PivotFieldInfo>();
+
+                var data = ExtractPivotData(pivot, arguments.MaxRows);
+
+                pivotTables.Add(new PivotTableInfo(
+                    pivot.Name,
+                    worksheet.Name,
+                    worksheet.Name,
+                    "Pivot Table Range",
+                    rowFields,
+                    columnFields,
+                    dataFields,
+                    filterFields,
+                    data
+                ));
+            }
+
+            return new PivotTableResult(pivotTables);
+        }, cancellationToken);
+    }
+
+    private static IReadOnlyList<PivotDataRow> ExtractPivotData(IXLPivotTable pivot, int maxRows)
+    {
+        var rows = new List<PivotDataRow>();
+        
+        var targetCell = pivot.TargetCell;
+        if (targetCell is null)
+        {
+            return rows;
+        }
+        
+        var lastCellUsed = targetCell.Worksheet.LastCellUsed();
+        if (lastCellUsed is null)
+        {
+            return rows;
+        }
+        
+        var range = targetCell.Worksheet.Range(targetCell.Address, lastCellUsed.Address);
+        
+        var headerRow = range.FirstRow();
+        var headers = headerRow.Cells().Select(c => c.GetString()).ToArray();
+        
+        if (headers.Length == 0)
+        {
+            return rows;
+        }
+        
+        var dataRows = range.RowsUsed().Skip(1).Take(maxRows);
+        
+        foreach (var row in dataRows)
+        {
+            var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < headers.Length && i < row.CellCount(); i++)
+            {
+                var header = string.IsNullOrWhiteSpace(headers[i]) ? $"Column{i + 1}" : headers[i];
+                values[header] = FormatCell(row.Cell(i + 1));
+            }
+            
+            rows.Add(new PivotDataRow(values));
+        }
+        
+        return rows;
     }
 }
