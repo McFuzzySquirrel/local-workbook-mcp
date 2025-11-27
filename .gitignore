@@ -65,6 +65,7 @@ nunit-*.xml
 .specify/
 .vscode/
 .idea/
+.github/
 *.swp
 *.swo
 *~
