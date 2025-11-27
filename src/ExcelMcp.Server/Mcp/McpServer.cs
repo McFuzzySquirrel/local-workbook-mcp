@@ -19,7 +19,8 @@ internal sealed class McpServer
         {
             { "excel-list-structure", HandleListStructureAsync },
             { "excel-search", HandleSearchAsync },
-            { "excel-preview-table", HandlePreviewAsync }
+            { "excel-preview-table", HandlePreviewAsync },
+            { "excel-analyze-pivot", HandleAnalyzePivotAsync }
         };
     }
 
@@ -311,6 +312,45 @@ internal sealed class McpServer
         }
     }
 
+    private async Task<McpToolCallResult> HandleAnalyzePivotAsync(JsonNode? arguments, CancellationToken cancellationToken)
+    {
+        if (arguments is null)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "Worksheet argument is required.") }, true);
+        }
+
+        var worksheetName = arguments["worksheet"]?.GetValue<string?>();
+        var pivotTableName = arguments["pivotTable"]?.GetValue<string?>();
+        var includeFilters = arguments["includeFilters"]?.GetValue<bool?>() ?? true;
+        var maxRows = arguments["maxRows"]?.GetValue<int?>() ?? 100;
+
+        if (string.IsNullOrWhiteSpace(worksheetName))
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'worksheet' argument is required.") }, true);
+        }
+
+        try
+        {
+            var args = new PivotTableArguments(worksheetName, pivotTableName, includeFilters, maxRows);
+            var result = await _workbookService.AnalyzePivotTablesAsync(args, cancellationToken).ConfigureAwait(false);
+
+            if (result.PivotTables.Count == 0)
+            {
+                return new McpToolCallResult(new[]
+                {
+                    new McpToolContent("text", Text: $"No pivot tables found in worksheet '{worksheetName}'.")
+                });
+            }
+
+            var json = JsonSerializer.Serialize(result, JsonOptions.Serializer);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: json) });
+        }
+        catch (Exception ex)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: ex.Message) }, true);
+        }
+    }
+
     private static string GetToolDescription(string toolName)
     {
         return toolName switch
@@ -318,6 +358,7 @@ internal sealed class McpServer
             "excel-list-structure" => "Summarize worksheets, tables, and columns available in the workbook.",
             "excel-search" => "Search the workbook for rows containing a text query across worksheets or tables.",
             "excel-preview-table" => "Return a CSV preview of a worksheet or table.",
+            "excel-analyze-pivot" => "Analyze pivot tables in a worksheet, including structure, fields, and aggregated data.",
             _ => "Excel tool"
         };
         }
@@ -347,6 +388,18 @@ internal sealed class McpServer
                                 "worksheet": {"type": "string", "description": "Worksheet to preview."},
                                 "table": {"type": "string", "description": "Optional table within the worksheet."},
                                 "rows": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of rows to include."}
+                            },
+                            "required": ["worksheet"]
+                        }
+                        """)!,
+                        "excel-analyze-pivot" => JsonNode.Parse("""
+                        {
+                            "type": "object",
+                            "properties": {
+                                "worksheet": {"type": "string", "description": "Worksheet containing the pivot table."},
+                                "pivotTable": {"type": "string", "description": "Optional specific pivot table name. If omitted, all pivot tables in the worksheet are analyzed."},
+                                "includeFilters": {"type": "boolean", "description": "Whether to include filter fields in the analysis."},
+                                "maxRows": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Maximum number of data rows to include from the pivot table."}
                             },
                             "required": ["worksheet"]
                         }
