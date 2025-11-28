@@ -373,7 +373,7 @@ public sealed class ExcelWorkbookServiceWriteBackTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAuditTrailAsync_FiltersbyOperationType()
+    public async Task GetAuditTrailAsync_FiltersByOperationType()
     {
         var service = new ExcelWorkbookService(_testWorkbookPath);
         
