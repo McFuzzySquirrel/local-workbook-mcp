@@ -8,9 +8,12 @@ namespace ExcelMcp.Server.Excel;
 public sealed class ExcelWorkbookService
 {
     private const int DefaultPreviewRowCount = 20;
+    private const int DefaultAuditLimit = 100;
 
     private readonly string _workbookPath;
     private readonly object _metadataLock = new();
+    private readonly object _auditLock = new();
+    private readonly List<AuditEntry> _auditTrail = new();
 
     private WorkbookMetadata? _metadataCache;
     private DateTime _metadataFileTimestamp;
@@ -544,5 +547,244 @@ public sealed class ExcelWorkbookService
         }
         
         return rows;
+    }
+
+    /// <summary>
+    /// Updates the value of a single cell in the workbook.
+    /// </summary>
+    public async Task<UpdateCellResult> UpdateCellAsync(UpdateCellArguments arguments, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        if (string.IsNullOrWhiteSpace(arguments.Worksheet))
+        {
+            throw new ArgumentException("Worksheet name is required.", nameof(arguments));
+        }
+        if (string.IsNullOrWhiteSpace(arguments.CellAddress))
+        {
+            throw new ArgumentException("Cell address is required.", nameof(arguments));
+        }
+
+        return await Task.Run(() =>
+        {
+            using var workbook = new XLWorkbook(_workbookPath);
+            var worksheet = workbook.Worksheets.FirstOrDefault(ws => WorksheetMatches(ws.Name, arguments.Worksheet));
+            
+            if (worksheet is null)
+            {
+                throw new InvalidOperationException($"Worksheet '{arguments.Worksheet}' not found.");
+            }
+
+            var cell = worksheet.Cell(arguments.CellAddress);
+            var previousValue = FormatCell(cell);
+            
+            cell.Value = arguments.Value;
+            workbook.Save();
+
+            var timestamp = DateTimeOffset.UtcNow;
+            var auditId = AddAuditEntry(
+                "UpdateCell",
+                $"Updated cell {arguments.CellAddress} in {arguments.Worksheet}",
+                timestamp,
+                arguments.Reason,
+                new Dictionary<string, string?>
+                {
+                    { "worksheet", arguments.Worksheet },
+                    { "cell", arguments.CellAddress },
+                    { "previousValue", previousValue },
+                    { "newValue", arguments.Value }
+                });
+
+            InvalidateMetadataCache();
+
+            return new UpdateCellResult(
+                worksheet.Name,
+                arguments.CellAddress,
+                previousValue,
+                arguments.Value,
+                timestamp,
+                auditId);
+        }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Adds a new worksheet to the workbook.
+    /// </summary>
+    public async Task<AddWorksheetResult> AddWorksheetAsync(AddWorksheetArguments arguments, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        if (string.IsNullOrWhiteSpace(arguments.Name))
+        {
+            throw new ArgumentException("Worksheet name is required.", nameof(arguments));
+        }
+
+        return await Task.Run(() =>
+        {
+            using var workbook = new XLWorkbook(_workbookPath);
+            
+            // Check if worksheet with same name already exists
+            if (workbook.Worksheets.Any(ws => string.Equals(ws.Name, arguments.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException($"Worksheet '{arguments.Name}' already exists.");
+            }
+
+            IXLWorksheet newWorksheet;
+            int position;
+
+            if (arguments.Position.HasValue && arguments.Position.Value > 0 && arguments.Position.Value <= workbook.Worksheets.Count + 1)
+            {
+                newWorksheet = workbook.Worksheets.Add(arguments.Name, arguments.Position.Value);
+                position = arguments.Position.Value;
+            }
+            else
+            {
+                newWorksheet = workbook.Worksheets.Add(arguments.Name);
+                position = workbook.Worksheets.Count;
+            }
+
+            workbook.Save();
+
+            var timestamp = DateTimeOffset.UtcNow;
+            var auditId = AddAuditEntry(
+                "AddWorksheet",
+                $"Added worksheet '{arguments.Name}' at position {position}",
+                timestamp,
+                arguments.Reason,
+                new Dictionary<string, string?>
+                {
+                    { "worksheetName", arguments.Name },
+                    { "position", position.ToString() }
+                });
+
+            InvalidateMetadataCache();
+
+            return new AddWorksheetResult(
+                newWorksheet.Name,
+                position,
+                timestamp,
+                auditId);
+        }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Adds an annotation (comment) to a cell in the workbook.
+    /// </summary>
+    public async Task<AddAnnotationResult> AddAnnotationAsync(AddAnnotationArguments arguments, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        if (string.IsNullOrWhiteSpace(arguments.Worksheet))
+        {
+            throw new ArgumentException("Worksheet name is required.", nameof(arguments));
+        }
+        if (string.IsNullOrWhiteSpace(arguments.CellAddress))
+        {
+            throw new ArgumentException("Cell address is required.", nameof(arguments));
+        }
+        if (string.IsNullOrWhiteSpace(arguments.Text))
+        {
+            throw new ArgumentException("Annotation text is required.", nameof(arguments));
+        }
+
+        return await Task.Run(() =>
+        {
+            using var workbook = new XLWorkbook(_workbookPath);
+            var worksheet = workbook.Worksheets.FirstOrDefault(ws => WorksheetMatches(ws.Name, arguments.Worksheet));
+            
+            if (worksheet is null)
+            {
+                throw new InvalidOperationException($"Worksheet '{arguments.Worksheet}' not found.");
+            }
+
+            var cell = worksheet.Cell(arguments.CellAddress);
+            var author = arguments.Author ?? "ExcelMcp Agent";
+            
+            // ClosedXML uses comments as annotations
+            var comment = cell.GetComment();
+            var fullText = string.IsNullOrEmpty(comment.Text) 
+                ? $"[{author}]: {arguments.Text}"
+                : $"{comment.Text}\n[{author}]: {arguments.Text}";
+            
+            cell.GetComment().AddText(arguments.Text);
+            cell.GetComment().Author = author;
+            
+            workbook.Save();
+
+            var timestamp = DateTimeOffset.UtcNow;
+            var auditId = AddAuditEntry(
+                "AddAnnotation",
+                $"Added annotation to cell {arguments.CellAddress} in {arguments.Worksheet}",
+                timestamp,
+                null,
+                new Dictionary<string, string?>
+                {
+                    { "worksheet", arguments.Worksheet },
+                    { "cell", arguments.CellAddress },
+                    { "text", arguments.Text },
+                    { "author", author }
+                });
+
+            return new AddAnnotationResult(
+                worksheet.Name,
+                arguments.CellAddress,
+                arguments.Text,
+                author,
+                timestamp,
+                auditId);
+        }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets the audit trail of changes made to the workbook.
+    /// </summary>
+    public Task<GetAuditTrailResult> GetAuditTrailAsync(GetAuditTrailArguments arguments, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_auditLock)
+        {
+            var entries = _auditTrail.AsEnumerable();
+
+            if (arguments.Since.HasValue)
+            {
+                entries = entries.Where(e => e.Timestamp >= arguments.Since.Value);
+            }
+
+            if (arguments.Until.HasValue)
+            {
+                entries = entries.Where(e => e.Timestamp <= arguments.Until.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(arguments.OperationType))
+            {
+                entries = entries.Where(e => string.Equals(e.OperationType, arguments.OperationType, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var totalCount = entries.Count();
+            var limit = arguments.Limit ?? DefaultAuditLimit;
+            var limitedEntries = entries.OrderByDescending(e => e.Timestamp).Take(limit).ToList();
+
+            return Task.FromResult(new GetAuditTrailResult(limitedEntries, totalCount));
+        }
+    }
+
+    private string AddAuditEntry(string operationType, string description, DateTimeOffset timestamp, string? reason, IReadOnlyDictionary<string, string?> details)
+    {
+        var id = $"audit-{Guid.NewGuid():N}";
+        var entry = new AuditEntry(id, operationType, description, timestamp, reason, details);
+
+        lock (_auditLock)
+        {
+            _auditTrail.Add(entry);
+        }
+
+        return id;
+    }
+
+    private void InvalidateMetadataCache()
+    {
+        lock (_metadataLock)
+        {
+            _metadataCache = null;
+        }
     }
 }

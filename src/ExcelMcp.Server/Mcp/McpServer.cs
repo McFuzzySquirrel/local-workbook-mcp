@@ -20,7 +20,11 @@ internal sealed class McpServer
             { "excel-list-structure", HandleListStructureAsync },
             { "excel-search", HandleSearchAsync },
             { "excel-preview-table", HandlePreviewAsync },
-            { "excel-analyze-pivot", HandleAnalyzePivotAsync }
+            { "excel-analyze-pivot", HandleAnalyzePivotAsync },
+            { "excel-update-cell", HandleUpdateCellAsync },
+            { "excel-add-worksheet", HandleAddWorksheetAsync },
+            { "excel-add-annotation", HandleAddAnnotationAsync },
+            { "excel-audit-trail", HandleAuditTrailAsync }
         };
     }
 
@@ -351,6 +355,157 @@ internal sealed class McpServer
         }
     }
 
+    private async Task<McpToolCallResult> HandleUpdateCellAsync(JsonNode? arguments, CancellationToken cancellationToken)
+    {
+        if (arguments is null)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "Worksheet, cell address, and value arguments are required.") }, true);
+        }
+
+        var worksheetName = arguments["worksheet"]?.GetValue<string?>();
+        var cellAddress = arguments["cell"]?.GetValue<string?>();
+        var value = arguments["value"]?.GetValue<string?>();
+        var reason = arguments["reason"]?.GetValue<string?>();
+
+        if (string.IsNullOrWhiteSpace(worksheetName))
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'worksheet' argument is required.") }, true);
+        }
+
+        if (string.IsNullOrWhiteSpace(cellAddress))
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'cell' argument is required.") }, true);
+        }
+
+        if (value is null)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'value' argument is required.") }, true);
+        }
+
+        try
+        {
+            var args = new UpdateCellArguments(worksheetName, cellAddress, value, reason);
+            var result = await _workbookService.UpdateCellAsync(args, cancellationToken).ConfigureAwait(false);
+
+            var json = JsonSerializer.Serialize(result, JsonOptions.Serializer);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: json) });
+        }
+        catch (Exception ex)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: ex.Message) }, true);
+        }
+    }
+
+    private async Task<McpToolCallResult> HandleAddWorksheetAsync(JsonNode? arguments, CancellationToken cancellationToken)
+    {
+        if (arguments is null)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "Worksheet name argument is required.") }, true);
+        }
+
+        var name = arguments["name"]?.GetValue<string?>();
+        var position = arguments["position"]?.GetValue<int?>();
+        var reason = arguments["reason"]?.GetValue<string?>();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'name' argument is required.") }, true);
+        }
+
+        try
+        {
+            var args = new AddWorksheetArguments(name, position, reason);
+            var result = await _workbookService.AddWorksheetAsync(args, cancellationToken).ConfigureAwait(false);
+
+            var json = JsonSerializer.Serialize(result, JsonOptions.Serializer);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: json) });
+        }
+        catch (Exception ex)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: ex.Message) }, true);
+        }
+    }
+
+    private async Task<McpToolCallResult> HandleAddAnnotationAsync(JsonNode? arguments, CancellationToken cancellationToken)
+    {
+        if (arguments is null)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "Worksheet, cell address, and text arguments are required.") }, true);
+        }
+
+        var worksheetName = arguments["worksheet"]?.GetValue<string?>();
+        var cellAddress = arguments["cell"]?.GetValue<string?>();
+        var text = arguments["text"]?.GetValue<string?>();
+        var author = arguments["author"]?.GetValue<string?>();
+
+        if (string.IsNullOrWhiteSpace(worksheetName))
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'worksheet' argument is required.") }, true);
+        }
+
+        if (string.IsNullOrWhiteSpace(cellAddress))
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'cell' argument is required.") }, true);
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: "The 'text' argument is required.") }, true);
+        }
+
+        try
+        {
+            var args = new AddAnnotationArguments(worksheetName, cellAddress, text, author);
+            var result = await _workbookService.AddAnnotationAsync(args, cancellationToken).ConfigureAwait(false);
+
+            var json = JsonSerializer.Serialize(result, JsonOptions.Serializer);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: json) });
+        }
+        catch (Exception ex)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: ex.Message) }, true);
+        }
+    }
+
+    private async Task<McpToolCallResult> HandleAuditTrailAsync(JsonNode? arguments, CancellationToken cancellationToken)
+    {
+        DateTimeOffset? since = null;
+        DateTimeOffset? until = null;
+        string? operationType = null;
+        int? limit = null;
+
+        if (arguments is not null)
+        {
+            var sinceStr = arguments["since"]?.GetValue<string?>();
+            if (!string.IsNullOrWhiteSpace(sinceStr) && DateTimeOffset.TryParse(sinceStr, out var parsedSince))
+            {
+                since = parsedSince;
+            }
+
+            var untilStr = arguments["until"]?.GetValue<string?>();
+            if (!string.IsNullOrWhiteSpace(untilStr) && DateTimeOffset.TryParse(untilStr, out var parsedUntil))
+            {
+                until = parsedUntil;
+            }
+
+            operationType = arguments["operationType"]?.GetValue<string?>();
+            limit = arguments["limit"]?.GetValue<int?>();
+        }
+
+        try
+        {
+            var args = new GetAuditTrailArguments(since, until, operationType, limit);
+            var result = await _workbookService.GetAuditTrailAsync(args, cancellationToken).ConfigureAwait(false);
+
+            var json = JsonSerializer.Serialize(result, JsonOptions.Serializer);
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: json) });
+        }
+        catch (Exception ex)
+        {
+            return new McpToolCallResult(new[] { new McpToolContent("text", Text: ex.Message) }, true);
+        }
+    }
+
     private static string GetToolDescription(string toolName)
     {
         return toolName switch
@@ -359,54 +514,104 @@ internal sealed class McpServer
             "excel-search" => "Search the workbook for rows containing a text query across worksheets or tables.",
             "excel-preview-table" => "Return a CSV preview of a worksheet or table.",
             "excel-analyze-pivot" => "Analyze pivot tables in a worksheet, including structure, fields, and aggregated data.",
+            "excel-update-cell" => "Update the value of a cell in a worksheet. Use for making corrections or adding data.",
+            "excel-add-worksheet" => "Add a new worksheet to the workbook. Use for organizing new data or analysis.",
+            "excel-add-annotation" => "Add an annotation (comment) to a cell. Use for documenting findings or notes.",
+            "excel-audit-trail" => "Get the audit trail of changes made to the workbook during this session.",
             _ => "Excel tool"
         };
-        }
+    }
 
     private static JsonNode BuildInputSchema(string toolName)
     {
         return toolName switch
         {
-                        "excel-list-structure" => JsonNode.Parse("{ \"type\": \"object\", \"properties\": {} }")!,
-                        "excel-search" => JsonNode.Parse("""
-                        {
-                            "type": "object",
-                            "properties": {
-                                "query": {"type": "string", "description": "Text to match within cell values."},
-                                "worksheet": {"type": "string", "description": "Optional worksheet name filter."},
-                                "table": {"type": "string", "description": "Optional Excel table name filter."},
-                                "limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of matching rows."},
-                                "caseSensitive": {"type": "boolean", "description": "Whether to match using case-sensitive comparison."}
-                            },
-                            "required": ["query"]
-                        }
-                        """)!,
-                        "excel-preview-table" => JsonNode.Parse("""
-                        {
-                            "type": "object",
-                            "properties": {
-                                "worksheet": {"type": "string", "description": "Worksheet to preview."},
-                                "table": {"type": "string", "description": "Optional table within the worksheet."},
-                                "rows": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of rows to include."}
-                            },
-                            "required": ["worksheet"]
-                        }
-                        """)!,
-                        "excel-analyze-pivot" => JsonNode.Parse("""
-                        {
-                            "type": "object",
-                            "properties": {
-                                "worksheet": {"type": "string", "description": "Worksheet containing the pivot table."},
-                                "pivotTable": {"type": "string", "description": "Optional specific pivot table name. If omitted, all pivot tables in the worksheet are analyzed."},
-                                "includeFilters": {"type": "boolean", "description": "Whether to include filter fields in the analysis."},
-                                "maxRows": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Maximum number of data rows to include from the pivot table."}
-                            },
-                            "required": ["worksheet"]
-                        }
-                        """)!,
-                        _ => JsonNode.Parse("{ }")!
-                };
-        }
+            "excel-list-structure" => JsonNode.Parse("{ \"type\": \"object\", \"properties\": {} }")!,
+            "excel-search" => JsonNode.Parse("""
+            {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Text to match within cell values."},
+                    "worksheet": {"type": "string", "description": "Optional worksheet name filter."},
+                    "table": {"type": "string", "description": "Optional Excel table name filter."},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of matching rows."},
+                    "caseSensitive": {"type": "boolean", "description": "Whether to match using case-sensitive comparison."}
+                },
+                "required": ["query"]
+            }
+            """)!,
+            "excel-preview-table" => JsonNode.Parse("""
+            {
+                "type": "object",
+                "properties": {
+                    "worksheet": {"type": "string", "description": "Worksheet to preview."},
+                    "table": {"type": "string", "description": "Optional table within the worksheet."},
+                    "rows": {"type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum number of rows to include."}
+                },
+                "required": ["worksheet"]
+            }
+            """)!,
+            "excel-analyze-pivot" => JsonNode.Parse("""
+            {
+                "type": "object",
+                "properties": {
+                    "worksheet": {"type": "string", "description": "Worksheet containing the pivot table."},
+                    "pivotTable": {"type": "string", "description": "Optional specific pivot table name. If omitted, all pivot tables in the worksheet are analyzed."},
+                    "includeFilters": {"type": "boolean", "description": "Whether to include filter fields in the analysis."},
+                    "maxRows": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Maximum number of data rows to include from the pivot table."}
+                },
+                "required": ["worksheet"]
+            }
+            """)!,
+            "excel-update-cell" => JsonNode.Parse("""
+            {
+                "type": "object",
+                "properties": {
+                    "worksheet": {"type": "string", "description": "Name of the worksheet containing the cell."},
+                    "cell": {"type": "string", "description": "Cell address to update (e.g., 'A1', 'B5')."},
+                    "value": {"type": "string", "description": "New value to set in the cell."},
+                    "reason": {"type": "string", "description": "Optional reason for the update (for audit trail)."}
+                },
+                "required": ["worksheet", "cell", "value"]
+            }
+            """)!,
+            "excel-add-worksheet" => JsonNode.Parse("""
+            {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Name for the new worksheet."},
+                    "position": {"type": "integer", "minimum": 1, "description": "Optional position for the worksheet (1-based)."},
+                    "reason": {"type": "string", "description": "Optional reason for adding the worksheet (for audit trail)."}
+                },
+                "required": ["name"]
+            }
+            """)!,
+            "excel-add-annotation" => JsonNode.Parse("""
+            {
+                "type": "object",
+                "properties": {
+                    "worksheet": {"type": "string", "description": "Name of the worksheet containing the cell."},
+                    "cell": {"type": "string", "description": "Cell address to annotate (e.g., 'A1', 'B5')."},
+                    "text": {"type": "string", "description": "Annotation text (comment) to add."},
+                    "author": {"type": "string", "description": "Optional author name for the annotation."}
+                },
+                "required": ["worksheet", "cell", "text"]
+            }
+            """)!,
+            "excel-audit-trail" => JsonNode.Parse("""
+            {
+                "type": "object",
+                "properties": {
+                    "since": {"type": "string", "format": "date-time", "description": "Optional start timestamp for filtering (ISO 8601)."},
+                    "until": {"type": "string", "format": "date-time", "description": "Optional end timestamp for filtering (ISO 8601)."},
+                    "operationType": {"type": "string", "description": "Optional filter by operation type (UpdateCell, AddWorksheet, AddAnnotation)."},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Maximum number of entries to return."}
+                }
+            }
+            """)!,
+            _ => JsonNode.Parse("{ }")!
+        };
+    }
 
     private static void Log(string message)
     {
