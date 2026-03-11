@@ -70,6 +70,7 @@ else
 builder.Services.AddSingleton<WorkbookStructurePlugin>();
 builder.Services.AddSingleton<WorkbookSearchPlugin>();
 builder.Services.AddSingleton<DataRetrievalPlugin>();
+builder.Services.AddSingleton<WorkbookWritePlugin>();
 
 // Semantic Kernel with OpenAI chat completion
 builder.Services.AddSingleton(serviceProvider =>
@@ -95,6 +96,7 @@ builder.Services.AddSingleton(serviceProvider =>
     kernelBuilder.Plugins.AddFromObject(serviceProvider.GetRequiredService<WorkbookStructurePlugin>());
     kernelBuilder.Plugins.AddFromObject(serviceProvider.GetRequiredService<WorkbookSearchPlugin>());
     kernelBuilder.Plugins.AddFromObject(serviceProvider.GetRequiredService<DataRetrievalPlugin>());
+    kernelBuilder.Plugins.AddFromObject(serviceProvider.GetRequiredService<WorkbookWritePlugin>());
     
     return kernelBuilder.Build();
 });

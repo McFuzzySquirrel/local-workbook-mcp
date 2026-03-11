@@ -115,4 +115,73 @@ internal sealed class ExcelTools
 
         return JsonSerializer.Serialize(result, JsonOptions.Serializer);
     }
+
+    // ── Write tools ──────────────────────────────────────────────────────────
+
+    [McpServerTool(Name = "excel-write-cell")]
+    [Description("Write a value to a single cell in an Excel workbook. A timestamped backup is created automatically before any change is saved.")]
+    public static async Task<string> WriteCellAsync(
+        [Description("Worksheet name containing the target cell.")] string worksheet,
+        [Description("Cell address in A1 notation (e.g. \"B4\" or \"C12\").")] string cell_address,
+        [Description("Path to the Excel workbook (.xlsx or .xls). If omitted, uses the EXCEL_MCP_WORKBOOK environment variable.")] string? workbook_path = null,
+        [Description("Value to write. Numeric strings are stored as numbers, 'true'/'false' as booleans, everything else as text. Omit or pass null to clear the cell.")] string? value = null,
+        CancellationToken cancellationToken = default)
+    {
+        var path = ResolveAndValidatePath(workbook_path);
+        var writeService = new ExcelWriteService();
+        var result = await writeService.WriteCellAsync(
+            new WriteCellRequest(path, worksheet, cell_address, value),
+            cancellationToken).ConfigureAwait(false);
+        return JsonSerializer.Serialize(result, JsonOptions.Serializer);
+    }
+
+    [McpServerTool(Name = "excel-write-range")]
+    [Description("Write values to multiple cells in a single operation. A timestamped backup is created automatically before changes are saved.")]
+    public static async Task<string> WriteRangeAsync(
+        [Description("Worksheet name containing the target cells.")] string worksheet,
+        [Description("JSON array of cell updates, each with 'cellAddress' (A1 notation) and 'value' (string or null to clear). Example: [{\"cellAddress\":\"A1\",\"value\":\"Hello\"},{\"cellAddress\":\"B2\",\"value\":\"42\"}]")] string updates_json,
+        [Description("Path to the Excel workbook (.xlsx or .xls). If omitted, uses the EXCEL_MCP_WORKBOOK environment variable.")] string? workbook_path = null,
+        CancellationToken cancellationToken = default)
+    {
+        var path = ResolveAndValidatePath(workbook_path);
+
+        List<CellUpdate> updates;
+        try
+        {
+            updates = JsonSerializer.Deserialize<List<CellUpdate>>(updates_json, JsonOptions.Serializer)
+                ?? throw new ArgumentException("updates_json deserialized to null.");
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new WriteResult(false,
+                $"Invalid updates_json: {ex.Message}"), JsonOptions.Serializer);
+        }
+
+        if (updates.Count == 0)
+        {
+            return JsonSerializer.Serialize(new WriteResult(false,
+                "updates_json must contain at least one cell update."), JsonOptions.Serializer);
+        }
+
+        var writeService = new ExcelWriteService();
+        var result = await writeService.WriteRangeAsync(
+            new WriteRangeRequest(path, worksheet, updates),
+            cancellationToken).ConfigureAwait(false);
+        return JsonSerializer.Serialize(result, JsonOptions.Serializer);
+    }
+
+    [McpServerTool(Name = "excel-create-worksheet")]
+    [Description("Add a new blank worksheet to an Excel workbook. A timestamped backup is created automatically before the change is saved.")]
+    public static async Task<string> CreateWorksheetAsync(
+        [Description("Name for the new worksheet.")] string worksheet_name,
+        [Description("Path to the Excel workbook (.xlsx or .xls). If omitted, uses the EXCEL_MCP_WORKBOOK environment variable.")] string? workbook_path = null,
+        CancellationToken cancellationToken = default)
+    {
+        var path = ResolveAndValidatePath(workbook_path);
+        var writeService = new ExcelWriteService();
+        var result = await writeService.CreateWorksheetAsync(
+            new CreateWorksheetRequest(path, worksheet_name),
+            cancellationToken).ConfigureAwait(false);
+        return JsonSerializer.Serialize(result, JsonOptions.Serializer);
+    }
 }
