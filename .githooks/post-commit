@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+# EJS post-commit hook: reminds you to create/update a Session Journey.
+# To bypass: use `git commit --no-verify`.
+
+if [ "${EJS_SKIP:-}" = "1" ]; then
+  exit 0
+fi
+
+year="$(date +%Y)"
+today="$(date +%F)"
+
+changed_files="$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null || true)"
+
+echo "$changed_files" | grep -E -q "^ejs-docs/journey/${year}/ejs-session-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}\\.md$" && exit 0
+
+cat <<EOF
+EJS reminder: no Session Journey file detected in the last commit.
+
+Create/update one Session Journey per session end:
+  ejs-docs/journey/${year}/ejs-session-${today}-01.md
+
+Template:
+  ejs-docs/journey/_templates/journey-template.md
+
+If you're done, tell your agent:
+  "Wrap up this session"  (or "Prepare journey artifacts")
+
+To suppress this reminder for one commit:
+  git commit --no-verify
+Or set EJS_SKIP=1 in your environment.
+EOF

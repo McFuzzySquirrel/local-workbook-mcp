@@ -1,0 +1,48 @@
+#!/bin/sh
+set -eu
+
+# EJS pre-push hook: warns (or blocks) if the push doesn't include a Session Journey.
+# To bypass: `git push --no-verify`.
+# To enforce (block pushes): set EJS_ENFORCE=1.
+
+if [ "${EJS_SKIP:-}" = "1" ]; then
+  exit 0
+fi
+
+enforce="${EJS_ENFORCE:-0}"
+
+has_journey=0
+
+# pre-push receives lines on stdin:
+#   <local ref> <local sha> <remote ref> <remote sha>
+# There can be multiple lines if pushing multiple refs.
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
+
+  # If remote_sha is all zeros, it's a new branch/ref.
+  if echo "${remote_sha:-}" | grep -E -q '^0+$'; then
+    diff_names="$(git diff-tree --no-commit-id --name-only -r "$local_sha" 2>/dev/null || true)"
+  else
+    diff_names="$(git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null || true)"
+  fi
+
+  if echo "$diff_names" | grep -E -q "^ejs-docs/journey/[0-9]{4}/ejs-session-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}\\.md$"; then
+    has_journey=1
+    break
+  fi
+
+done
+
+if [ "$has_journey" = "1" ]; then
+  exit 0
+fi
+
+msg=$'EJS reminder: this push does not include a Session Journey file.\n\nExpected pattern:\n  ejs-docs/journey/YYYY/ejs-session-YYYY-MM-DD-<seq>.md\n\nIf you are ending a session, ask your agent:\n  "Wrap up this session"\n\nTo bypass: git push --no-verify\nTo enforce blocking: set EJS_ENFORCE=1\n'
+
+echo "$msg" 1>&2
+
+if [ "$enforce" = "1" ]; then
+  exit 1
+fi
+
+exit 0
