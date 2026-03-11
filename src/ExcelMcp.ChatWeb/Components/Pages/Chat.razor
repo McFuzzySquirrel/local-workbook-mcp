@@ -236,13 +236,17 @@
             cancellationTokenSource?.Cancel();
             cancellationTokenSource = new CancellationTokenSource();
 
-            var response = await AgentService.ProcessQueryAsync(query, Session, cancellationTokenSource.Token);
-            
-            // Response is already added to conversation by the service
-            // Force UI update to display the new message
-            StateHasChanged();
-            
-            // Refresh suggested queries
+            // Stream response — each chunk updates the placeholder turn in session history
+            var chunkCount = 0;
+            await foreach (var _ in AgentService.StreamQueryAsync(query, Session, cancellationTokenSource.Token))
+            {
+                chunkCount++;
+                // Re-render frequently at start, then every 8 chunks to keep UI responsive
+                if (chunkCount <= 10 || chunkCount % 8 == 0)
+                    await InvokeAsync(StateHasChanged);
+            }
+
+            await InvokeAsync(StateHasChanged);
             await LoadSuggestedQueries();
         }
         catch (Exception ex)
@@ -260,7 +264,7 @@
         finally
         {
             isLoading = false;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
             await ScrollToBottom();
         }
     }

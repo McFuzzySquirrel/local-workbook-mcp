@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using ExcelMcp.ChatWeb.Logging;
 using ExcelMcp.ChatWeb.Models;
@@ -464,6 +466,83 @@ Remember: Use tools to discover structure if you need more details!";
             _logger.LogError(correlationId, ex, "Error generating summary");
             return CreateErrorResponse(correlationId, ex);
         }
+    }
+
+    /// <summary>
+    /// Streams a response token-by-token, mutating the session's conversation history in real time.
+    /// The service creates a placeholder assistant turn that is updated as chunks arrive.
+    /// </summary>
+    public async IAsyncEnumerable<string> StreamQueryAsync(
+        string query,
+        WorkbookSession session,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query)) throw new ArgumentException("Query cannot be empty", nameof(query));
+        if (session is null) throw new ArgumentNullException(nameof(session));
+        if (session.CurrentContext == null || !session.CurrentContext.IsValid)
+            throw new InvalidOperationException("No valid workbook is currently loaded. Please load a workbook first.");
+
+        var correlationId = Guid.NewGuid().ToString("N")[..12];
+        _logger.LogQuery(correlationId, query);
+
+        // Add user turn (updates ConversationHistory + ContextWindow)
+        _conversationManager.AddUserTurn(query, correlationId);
+
+        // Create a placeholder assistant turn — mutated in-place as chunks stream in
+        var streamingTurn = new ConversationTurn
+        {
+            Role = "assistant",
+            Content = "",
+            ContentType = ContentType.Text,
+            CorrelationId = correlationId,
+            Timestamp = DateTimeOffset.UtcNow
+        };
+        session.ConversationHistory.Add(streamingTurn);
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(_skOptions.TimeoutSeconds));
+
+        var chatHistory = _conversationManager.GetContextForLLM();
+        chatHistory.AddSystemMessage(PromptTemplates.GetCompleteSystemPrompt());
+
+        var sheets = session.CurrentContext.Metadata?.Worksheets.Select(w => w.Name).ToList() ?? new List<string>();
+        var tables = session.CurrentContext.Metadata?.Worksheets
+            .SelectMany(w => w.Tables.Select(t => t.Name)).ToList() ?? new List<string>();
+
+        chatHistory.AddSystemMessage(
+            $"CURRENT WORKBOOK: '{session.CurrentContext.WorkbookName}'\n" +
+            $"Sheets: {string.Join(", ", sheets.Take(10))}\n" +
+            $"Tables: {(tables.Any() ? string.Join(", ", tables.Take(10)) : "None")}");
+
+        var chatService = _kernel.GetRequiredService<IChatCompletionService>();
+        var executionSettings = new OpenAIPromptExecutionSettings
+        {
+            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+            Temperature = 0.7,
+            MaxTokens = 2048
+        };
+
+        var sb = new StringBuilder();
+        await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
+            chatHistory, executionSettings, _kernel, timeoutCts.Token).ConfigureAwait(false))
+        {
+            if (!string.IsNullOrEmpty(chunk.Content))
+            {
+                sb.Append(chunk.Content);
+                streamingTurn.Content = sb.ToString();
+                yield return chunk.Content;
+            }
+        }
+
+        // Finalize: apply formatting and sync context window
+        var fullContent = sb.Length > 0 ? sb.ToString() : "No response generated.";
+        var (formattedContent, contentType) = FormatResponseContent(fullContent);
+        streamingTurn.Content = formattedContent;
+        streamingTurn.ContentType = contentType;
+
+        // Manually sync context window (bypasses AddAssistantTurn to avoid a duplicate history entry)
+        session.ContextWindow.AddAssistantMessage(formattedContent);
+        session.UpdateActivity();
     }
 
     /// <summary>

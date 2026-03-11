@@ -1,41 +1,37 @@
-﻿using ExcelMcp.Server.Excel;
-using ExcelMcp.Server.Mcp;
+﻿using ExcelMcp.Server.Mcp;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-var workbookPath = ResolveWorkbookPath(args);
-if (workbookPath is null && IsInteractive())
+// Optionally resolve a workbook path from --workbook / -w / EXCEL_MCP_WORKBOOK.
+// When provided at startup, it is stored in EXCEL_MCP_WORKBOOK so all tool calls
+// that omit workbook_path will fall back to it automatically.
+// External MCP clients (Claude Desktop, GitHub Copilot, Cursor) pass workbook_path
+// per tool call instead, so the server starts cleanly without a startup path.
+var startupWorkbook = ResolveWorkbookPath(args);
+if (!string.IsNullOrWhiteSpace(startupWorkbook))
 {
-	Console.Write("Enter the full path to the Excel workbook: ");
-	var input = Console.ReadLine()?.Trim();
-	if (!string.IsNullOrWhiteSpace(input))
-	{
-		workbookPath = Path.GetFullPath(input);
-		Environment.SetEnvironmentVariable("EXCEL_MCP_WORKBOOK", workbookPath);
-	}
+    if (!File.Exists(startupWorkbook))
+    {
+        Console.Error.WriteLine($"Workbook not found at '{startupWorkbook}'.");
+        return 1;
+    }
+    Environment.SetEnvironmentVariable("EXCEL_MCP_WORKBOOK", Path.GetFullPath(startupWorkbook));
 }
 
-if (workbookPath is null)
-{
-	Console.Error.WriteLine("A workbook path must be provided via --workbook, EXCEL_MCP_WORKBOOK, or interactively.");
-	return 1;
-}
+var builder = Host.CreateApplicationBuilder();
 
-if (!File.Exists(workbookPath))
-{
-	Console.Error.WriteLine($"Workbook not found at '{workbookPath}'.");
-	return 1;
-}
+// Redirect all console logging to stderr so stdout stays clean for the MCP Stdio protocol.
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
-using var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, eventArgs) =>
-{
-	eventArgs.Cancel = true;
-	cts.Cancel();
-};
+builder.Services
+    .AddMcpServer()
+    .WithStdioServerTransport()
+    .WithTools<ExcelTools>();
 
-var service = new ExcelWorkbookService(workbookPath);
-var server = new McpServer(service);
-
-await server.RunAsync(cts.Token);
+await builder.Build().RunAsync();
 return 0;
 
 static string? ResolveWorkbookPath(string[] arguments)
@@ -67,7 +63,4 @@ static string? ResolveWorkbookPath(string[] arguments)
 	return Environment.GetEnvironmentVariable("EXCEL_MCP_WORKBOOK");
 }
 
-static bool IsInteractive()
-{
-	return !Console.IsInputRedirected && !Console.IsOutputRedirected && !Console.IsErrorRedirected;
-}
+

@@ -112,4 +112,68 @@ public sealed class ExcelPlugin
         Log($"✅ Returned summary with {metadata.Worksheets.Count} worksheets");
         return JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
     }
+
+    [KernelFunction("write_cell")]
+    [Description("Write a value to a single cell in the workbook. A backup is created automatically before saving. Pass null to clear the cell.")]
+    [return: Description("JSON WriteResult with success flag, message, and backup path")]
+    public async Task<string> WriteCellAsync(
+        [Description("Worksheet name (e.g., 'Sales')")] string worksheet,
+        [Description("Cell address in A1 notation (e.g. 'B4')")] string cellAddress,
+        [Description("Value to write. Numerics stored as numbers, 'true'/'false' as booleans, else text. Null clears the cell.")] string? value = null,
+        CancellationToken cancellationToken = default)
+    {
+        Log($"🔧 Tool Called: write_cell(worksheet='{worksheet}', cellAddress='{cellAddress}', value='{value}')");
+        var writeService = new ExcelWriteService();
+        var result = await writeService.WriteCellAsync(
+            new WriteCellRequest(_service.WorkbookPath, worksheet, cellAddress, value),
+            cancellationToken);
+        Log($"✅ write_cell result: {result.Message}");
+        return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    [KernelFunction("write_range")]
+    [Description("Write values to multiple cells in one operation. A backup is created automatically before saving.")]
+    [return: Description("JSON WriteResult with success flag, message, and backup path")]
+    public async Task<string> WriteRangeAsync(
+        [Description("Worksheet name (e.g., 'Sales')")] string worksheet,
+        [Description("JSON array of {cellAddress, value} objects. E.g. [{\"cellAddress\":\"A1\",\"value\":\"Hello\"}]")] string updatesJson,
+        CancellationToken cancellationToken = default)
+    {
+        Log($"🔧 Tool Called: write_range(worksheet='{worksheet}', updates={updatesJson})");
+
+        List<CellUpdate> updates;
+        try
+        {
+            updates = JsonSerializer.Deserialize<List<CellUpdate>>(updatesJson)
+                ?? throw new ArgumentException("Deserialized to null.");
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new WriteResult(false, $"Invalid updatesJson: {ex.Message}"),
+                new JsonSerializerOptions { WriteIndented = true });
+        }
+
+        var writeService = new ExcelWriteService();
+        var result = await writeService.WriteRangeAsync(
+            new WriteRangeRequest(_service.WorkbookPath, worksheet, updates),
+            cancellationToken);
+        Log($"✅ write_range result: {result.Message}");
+        return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    [KernelFunction("create_worksheet")]
+    [Description("Add a new blank worksheet to the workbook. A backup is created automatically before saving.")]
+    [return: Description("JSON WriteResult with success flag and message")]
+    public async Task<string> CreateWorksheetAsync(
+        [Description("Name for the new worksheet")] string worksheetName,
+        CancellationToken cancellationToken = default)
+    {
+        Log($"🔧 Tool Called: create_worksheet(worksheetName='{worksheetName}')");
+        var writeService = new ExcelWriteService();
+        var result = await writeService.CreateWorksheetAsync(
+            new CreateWorksheetRequest(_service.WorkbookPath, worksheetName),
+            cancellationToken);
+        Log($"✅ create_worksheet result: {result.Message}");
+        return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+    }
 }

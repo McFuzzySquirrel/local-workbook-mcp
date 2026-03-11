@@ -81,4 +81,4 @@ logs/
 
 # User-specific files
 *.user
-*.suo
+*.suo.ejs.db

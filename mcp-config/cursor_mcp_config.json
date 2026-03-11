@@ -1,0 +1,13 @@
+{
+  "_comment": "Cursor MCP server configuration. Merge the 'mcpServers' entry into ~/.cursor/mcp.json",
+  "mcpServers": {
+    "excel": {
+      "command": "/path/to/ExcelMcp.Server",
+      "args": ["--workbook", "/path/to/your/workbook.xlsx"],
+      "_note": "On Windows use ExcelMcp.Server.exe.",
+      "env": {
+        "EXCEL_MCP_WORKBOOK": "/path/to/your/workbook.xlsx"
+      }
+    }
+  }
+}
