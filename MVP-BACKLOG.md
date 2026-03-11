@@ -40,15 +40,15 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 2.1 | Add write contracts to `ExcelMcp.Contracts` (`WriteCellRequest`, `WriteRangeRequest`, `WriteResult`) | ⬜ | |
-| 2.2 | Implement `ExcelWriteService.cs` in Server/Excel/ using ClosedXML | ⬜ | Includes file backup logic |
-| 2.3 | Add MCP tool: `excel-write-cell` | ⬜ | Depends on 1.3 |
-| 2.4 | Add MCP tool: `excel-write-range` | ⬜ | Depends on 1.3 |
-| 2.5 | Add MCP tool: `excel-create-worksheet` | ⬜ | Low effort add-on |
-| 2.6 | Add write functions to `ExcelPlugin.cs` (SkAgent) | ⬜ | |
-| 2.7 | Add write plugins to ChatWeb `Services/Plugins/` | ⬜ | |
-| 2.8 | Add unit tests for `ExcelWriteService` | ⬜ | |
-| 2.9 | Add contract tests for write DTOs | ⬜ | |
+| 2.1 | Add write contracts to `ExcelMcp.Contracts` (`WriteCellRequest`, `WriteRangeRequest`, `WriteResult`) | ✅ | `WriteContracts.cs` — 5 records |
+| 2.2 | Implement `ExcelWriteService.cs` in Server/Excel/ using ClosedXML | ✅ | Auto-backup w/ timestamp |
+| 2.3 | Add MCP tool: `excel-write-cell` | ✅ | In `ExcelTools.cs` |
+| 2.4 | Add MCP tool: `excel-write-range` | ✅ | In `ExcelTools.cs` |
+| 2.5 | Add MCP tool: `excel-create-worksheet` | ✅ | In `ExcelTools.cs` |
+| 2.6 | Add write functions to `ExcelPlugin.cs` (SkAgent) | ✅ | `write_cell`, `write_range`, `create_worksheet` |
+| 2.7 | Add write plugins to ChatWeb `Services/Plugins/` | ✅ | `WorkbookWritePlugin.cs` |
+| 2.8 | Add unit tests for `ExcelWriteService` | ⬜ | Future |
+| 2.9 | Add contract tests for write DTOs | ⬜ | Future |
 
 ---
 
@@ -58,12 +58,12 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 3.1 | Update `appsettings.json` defaults to Ollama (`http://localhost:11434/v1`, model: `llama3.2`) | ⬜ | |
-| 3.2 | Add `LlmProviderOptions.cs` with `ProviderType` enum (`Ollama`, `LmStudio`, `OpenAI`) | ⬜ | |
-| 3.3 | Update ChatWeb `Program.cs` — auto-detect provider at startup (try Ollama, fall back to LM Studio) | ⬜ | |
-| 3.4 | Add provider status indicator to Chat UI | ⬜ | Small UI badge |
-| 3.5 | Update `AgentConfiguration.cs` in SkAgent with same Ollama defaults | ⬜ | |
-| 3.6 | Bump `Microsoft.SemanticKernel` to latest in both ChatWeb and SkAgent projects | ⬜ | Check for breaking changes |
+| 3.1 | Update `appsettings.json` defaults to Ollama (`http://localhost:11434/v1`, model: `llama3.2`) | ✅ | Both appsettings.json + appsettings.Development.json |
+| 3.2 | Add `LlmProviderOptions.cs` with `ProviderType` enum (`Ollama`, `LmStudio`, `OpenAI`) | ❌ | Replaced by cascade auto-detect; enum not needed |
+| 3.3 | Update ChatWeb `Program.cs` — auto-detect provider at startup (try Ollama, fall back to LM Studio) | ✅ | `DetectProviderAsync` tries `:11434` first, then `:1234` |
+| 3.4 | Add provider status indicator to Chat UI | ⬜ | Nice-to-have future |
+| 3.5 | Update `AgentConfiguration.cs` in SkAgent with same Ollama defaults | ✅ | Fallback defaults + `DetectRunningModel` cascade updated |
+| 3.6 | Bump `Microsoft.SemanticKernel` to latest in both ChatWeb and SkAgent projects | ✅ | 1.28.0/1.26.0 → 1.73.0 (fixed GHSA-2ww3-72rp-wpp4 CVE) |
 
 ---
 
@@ -73,11 +73,11 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 4.1 | Create `mcp-config/claude_desktop_config.json` example | ⬜ | |
-| 4.2 | Create `.vscode/mcp.json` for GitHub Copilot agent mode | ⬜ | |
-| 4.3 | Create `mcp-config/cursor_mcp_config.json` example | ⬜ | |
-| 4.4 | Add `scripts/install.sh` — build + copy to Claude Desktop config path (Linux/macOS) | ⬜ | |
-| 4.5 | Add `scripts/install.ps1` — build + copy to Claude Desktop config path (Windows) | ⬜ | |
+| 4.1 | Create `mcp-config/claude_desktop_config.json` example | ✅ | |
+| 4.2 | Create `.vscode/mcp.json` for GitHub Copilot agent mode | ✅ | Uses `${workspaceFolder}` var |
+| 4.3 | Create `mcp-config/cursor_mcp_config.json` example | ✅ | |
+| 4.4 | Add `scripts/install.sh` — build + publish binaries (Linux/macOS) | ✅ | |
+| 4.5 | Add `scripts/install.ps1` — build + publish binaries (Windows) | ✅ | |
 | 4.6 | Update `README.md` QuickStart with per-client setup instructions | ⬜ | |
 
 ---
@@ -88,8 +88,8 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 5.1 | Update `ChatService.cs` to use SK `GetStreamingChatMessageContentsAsync` | ⬜ | |
-| 5.2 | Update `Chat.razor` to accumulate tokens and call `StateHasChanged()` per chunk | ⬜ | |
+| 5.1 | Update agent service to use SK `GetStreamingChatMessageContentsAsync` | ✅ | `ExcelAgentService.StreamQueryAsync` — mutates placeholder turn in-place |
+| 5.2 | Update `Chat.razor` to accumulate tokens and call `StateHasChanged()` per chunk | ✅ | `await InvokeAsync(StateHasChanged)` — first 10 chunks + every 8 thereafter |
 | 5.3 | Add streaming cancel button to UI | ⬜ | Nice-to-have |
 
 ---
@@ -113,3 +113,7 @@
 | 2026-03-11 | Ollama as default provider | Dominant local LLM runtime in 2026; LM Studio retained as fallback |
 | 2026-03-11 | Each MCP tool accepts `workbook_path` param | External clients (Claude Desktop, Copilot) need to specify files dynamically |
 | 2026-03-11 | Blazor UI stays as standalone experience | MCP client configs are additive, not a replacement |
+| 2026-03-11 | Cascade auto-detect (Ollama → LM Studio) instead of ProviderType enum | Simpler UX; zero config for anyone with Ollama or LM Studio running |
+| 2026-03-11 | Bump all TFMs to net10.0 | Ubuntu 24.04 apt only has .NET 8 and .NET 10 runtimes; net9.0 tests couldn't execute |
+| 2026-03-11 | Upgrade SK to 1.73.0 | Fix critical CVE GHSA-2ww3-72rp-wpp4 in SK.Core 1.26.0/1.28.0 |
+| 2026-03-11 | Streaming via in-place placeholder turn mutation | No duplicate history entries; Blazor component sees live updates without extra state |

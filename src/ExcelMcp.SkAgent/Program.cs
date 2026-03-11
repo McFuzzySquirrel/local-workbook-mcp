@@ -25,9 +25,9 @@ if (config is null)
 {
     config = new AgentConfiguration
     {
-        BaseUrl = "http://localhost:1234/v1",
-        ModelId = "local-model",
-        ApiKey = "lm-studio"
+        BaseUrl = "http://localhost:11434/v1",
+        ModelId = "llama3.2",
+        ApiKey = "not-needed"
     };
 }
 
@@ -377,35 +377,37 @@ static void RenderHeader(string workbookPath, string configuredModel, string act
 
 static async Task<string> DetectRunningModel(string baseUrl)
 {
-    try
+    // Try configured URL first, then Ollama, then LM Studio as fallback
+    var candidates = new[] { baseUrl, "http://localhost:11434/v1", "http://localhost:1234/v1" }
+        .Distinct();
+
+    foreach (var url in candidates)
     {
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-        var modelsUrl = baseUrl.Replace("/v1", "") + "/v1/models";
-        
-        var response = await httpClient.GetStringAsync(modelsUrl);
-        
-        // Use proper JSON parsing instead of string manipulation
-        var jsonDoc = JsonNode.Parse(response);
-        if (jsonDoc != null)
+        try
         {
-            var dataArray = jsonDoc["data"]?.AsArray();
-            if (dataArray != null && dataArray.Count > 0)
+            using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+            var normalised = url.TrimEnd('/');
+            var response = await httpClient.GetStringAsync($"{normalised}/models");
+
+            var jsonDoc = JsonNode.Parse(response);
+            if (jsonDoc != null)
             {
-                var firstModel = dataArray[0];
-                var modelId = firstModel?["id"]?.GetValue<string>();
-                if (!string.IsNullOrEmpty(modelId))
+                var dataArray = jsonDoc["data"]?.AsArray();
+                if (dataArray != null && dataArray.Count > 0)
                 {
-                    return modelId;
+                    var modelId = dataArray[0]?["id"]?.GetValue<string>();
+                    if (!string.IsNullOrEmpty(modelId))
+                        return modelId;
                 }
             }
         }
-        
-        return "unknown";
+        catch (Exception)
+        {
+            // provider not reachable — try next
+        }
     }
-    catch (Exception)
-    {
-        return "unknown";
-    }
+
+    return "unknown";
 }
 
 static void ShowHelp()

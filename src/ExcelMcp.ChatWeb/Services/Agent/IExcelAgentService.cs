@@ -20,6 +20,15 @@ public interface IExcelAgentService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Streams a response token-by-token, mutating the session's conversation history in real time.
+    /// Yields raw text chunks as they arrive from the LLM.
+    /// </summary>
+    IAsyncEnumerable<string> StreamQueryAsync(
+        string query,
+        WorkbookSession session,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Loads a new workbook and updates session context.
     /// </summary>
     /// <param name="filePath">Absolute path to .xlsx file.</param>

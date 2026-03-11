@@ -52,18 +52,26 @@ builder.Services.AddOptions<ConversationOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-// Auto-detect running model from LM Studio (like CLI does)
-var detectedModel = await DetectRunningModelAsync(builder.Configuration.GetSection("SemanticKernel")["BaseUrl"] ?? "http://localhost:1234/v1");
-if (!string.IsNullOrEmpty(detectedModel) && detectedModel != "unknown")
+// Auto-detect running LLM provider: tries Ollama first, then LM Studio
+var detected = await DetectProviderAsync();
+if (detected is { } provider)
 {
-    Log.Information("Auto-detected running model: {ModelName}", detectedModel);
-    // Override the configured model with the detected one
-    builder.Services.Configure<SemanticKernelOptions>(options => options.Model = detectedModel);
+    Log.Information("Auto-detected LLM provider: model={Model} url={BaseUrl}", provider.Model, provider.BaseUrl);
+    builder.Services.Configure<SemanticKernelOptions>(options =>
+    {
+        options.Model = provider.Model;
+        options.BaseUrl = provider.BaseUrl;
+    });
+    builder.Services.Configure<LlmStudioOptions>(options =>
+    {
+        options.Model = provider.Model;
+        options.BaseUrl = provider.BaseUrl.Replace("/v1", "");
+    });
 }
 else
 {
     var configuredModel = builder.Configuration.GetSection("SemanticKernel")["Model"];
-    Log.Warning("Could not detect running model, using configured model: {ModelName}", configuredModel);
+    Log.Warning("No local LLM detected, using configured defaults: {ModelName}", configuredModel);
 }
 
 // Register plugins first
@@ -173,37 +181,41 @@ finally
     Log.CloseAndFlush();
 }
 
-// Auto-detect running model from LM Studio API
-static async Task<string> DetectRunningModelAsync(string baseUrl)
+// Auto-detect the first responsive local LLM provider (Ollama, then LM Studio)
+static async Task<(string Model, string BaseUrl)?> DetectProviderAsync()
 {
-    try
+    // Priority order: Ollama, then LM Studio
+    var candidates = new[]
     {
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-        var modelsUrl = baseUrl.Replace("/v1", "") + "/v1/models";
-        
-        var response = await httpClient.GetStringAsync(modelsUrl);
-        
-        // Use proper JSON parsing
-        var jsonDoc = System.Text.Json.JsonDocument.Parse(response);
-        if (jsonDoc.RootElement.TryGetProperty("data", out var dataArray))
+        "http://localhost:11434/v1",
+        "http://localhost:1234/v1",
+    };
+
+    foreach (var baseUrl in candidates)
+    {
+        try
         {
-            if (dataArray.GetArrayLength() > 0)
+            using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+            var response = await httpClient.GetStringAsync($"{baseUrl}/models");
+            var jsonDoc = System.Text.Json.JsonDocument.Parse(response);
+            if (jsonDoc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.GetArrayLength() > 0)
             {
                 var firstModel = dataArray[0];
                 if (firstModel.TryGetProperty("id", out var idElement))
                 {
-                    return idElement.GetString() ?? "unknown";
+                    var model = idElement.GetString();
+                    if (!string.IsNullOrEmpty(model))
+                        return (model, baseUrl);
                 }
             }
         }
-        
-        return "unknown";
+        catch (Exception ex)
+        {
+            Log.Debug("LLM provider not reachable at {BaseUrl}: {Error}", baseUrl, ex.Message);
+        }
     }
-    catch (Exception ex)
-    {
-        Log.Warning(ex, "Failed to auto-detect model from {BaseUrl}", baseUrl);
-        return "unknown";
-    }
+
+    return null;
 }
 
 static void EnsureExcelMcpConfiguration(WebApplicationBuilder builder)

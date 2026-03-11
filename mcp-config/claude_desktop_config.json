@@ -1,0 +1,17 @@
+{
+  "_comment": "Add the 'excel' entry to the 'mcpServers' section of your Claude Desktop config.",
+  "_config_location": {
+    "macOS": "~/Library/Application Support/Claude/claude_desktop_config.json",
+    "windows": "%APPDATA%/Claude/claude_desktop_config.json"
+  },
+  "mcpServers": {
+    "excel": {
+      "command": "/path/to/ExcelMcp.Server",
+      "args": ["--workbook", "/path/to/your/workbook.xlsx"],
+      "_note": "On Windows use ExcelMcp.Server.exe. Omit --workbook to require clients to pass workbook_path per call.",
+      "env": {
+        "EXCEL_MCP_WORKBOOK": "/path/to/your/workbook.xlsx"
+      }
+    }
+  }
+}
