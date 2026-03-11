@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ExcelMcp.Server.Tests" />
+    <InternalsVisibleTo Include="ExcelMcp.UAT" />
   </ItemGroup>
 
   <ItemGroup>

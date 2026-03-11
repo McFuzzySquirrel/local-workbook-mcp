@@ -102,7 +102,7 @@ try
                 Console.Error.WriteLine("Error: --sheet and --cell are required.");
                 return 1;
             }
-            await WriteCellAsync(client, wcSheet, wcCell, wcValue);
+            if (!await WriteCellAsync(client, wcSheet, wcCell, wcValue)) return 1;
             break;
         case "write-range":
             var wrSheet = ResolveArgument(args, "--sheet") ?? args.SkipWhile(a => a != "write-range").Skip(1).FirstOrDefault();
@@ -113,7 +113,7 @@ try
                 Console.Error.WriteLine("Error: --sheet, --range, and --data (JSON array of {cell,value}) are required.");
                 return 1;
             }
-            await WriteRangeAsync(client, wrSheet, wrRange, wrData);
+            if (!await WriteRangeAsync(client, wrSheet, wrRange, wrData)) return 1;
             break;
         case "create-worksheet":
             var newSheet = args.SkipWhile(a => a != "create-worksheet").Skip(1).FirstOrDefault()
@@ -123,7 +123,7 @@ try
                 Console.Error.WriteLine("Error: Worksheet name required.");
                 return 1;
             }
-            await CreateWorksheetAsync(client, newSheet);
+            if (!await CreateWorksheetAsync(client, newSheet)) return 1;
             break;
         default:
             Console.Error.WriteLine($"Unknown command: {command}");
@@ -287,42 +287,43 @@ static async Task AnalyzePivotAsync(McpProcessClient client, string sheet, strin
     }
 }
 
-static async Task WriteCellAsync(McpProcessClient client, string sheet, string cell, string? value)
+static async Task<bool> WriteCellAsync(McpProcessClient client, string sheet, string cell, string? value)
 {
     var args = new JsonObject
     {
         ["worksheet"] = sheet,
-        ["cell"] = cell,
+        ["cell_address"] = cell,
         ["value"] = value ?? ""
     };
 
     var result = await client.CallToolAsync("excel-write-cell", args, CancellationToken.None);
     if (result.IsError) Console.Error.WriteLine("Write failed.");
     foreach (var content in result.Content) Console.WriteLine(content.Text);
+    return !result.IsError;
 }
 
-static async Task WriteRangeAsync(McpProcessClient client, string sheet, string range, string dataJson)
+static async Task<bool> WriteRangeAsync(McpProcessClient client, string sheet, string range, string dataJson)
 {
-    JsonNode? updates;
-    try { updates = JsonNode.Parse(dataJson); }
-    catch { Console.Error.WriteLine("Error: --data must be valid JSON."); return; }
+    try { JsonNode.Parse(dataJson); }
+    catch { Console.Error.WriteLine("Error: --data must be valid JSON."); return false; }
 
     var args = new JsonObject
     {
         ["worksheet"] = sheet,
-        ["range"] = range,
-        ["updates"] = updates
+        ["updates_json"] = dataJson
     };
 
     var result = await client.CallToolAsync("excel-write-range", args, CancellationToken.None);
     if (result.IsError) Console.Error.WriteLine("Write range failed.");
     foreach (var content in result.Content) Console.WriteLine(content.Text);
+    return !result.IsError;
 }
 
-static async Task CreateWorksheetAsync(McpProcessClient client, string name)
+static async Task<bool> CreateWorksheetAsync(McpProcessClient client, string name)
 {
-    var args = new JsonObject { ["name"] = name };
+    var args = new JsonObject { ["worksheet_name"] = name };
     var result = await client.CallToolAsync("excel-create-worksheet", args, CancellationToken.None);
     if (result.IsError) Console.Error.WriteLine("Create worksheet failed.");
     foreach (var content in result.Content) Console.WriteLine(content.Text);
+    return !result.IsError;
 }
