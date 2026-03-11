@@ -53,7 +53,8 @@ public sealed class McpProcessClient : IAsyncDisposable
                 ["name"] = "excel-mcp-client",
                 ["version"] = "0.1.0"
             },
-            ["capabilities"] = new JsonObject()
+            ["capabilities"] = new JsonObject(),
+            ["protocolVersion"] = "2024-11-05"
         };
 
         using var response = await _jsonRpc.SendRequestAsync("initialize", parameters, cancellationToken).ConfigureAwait(false);
@@ -61,6 +62,10 @@ public sealed class McpProcessClient : IAsyncDisposable
         {
             ThrowRpcError("initialize", error);
         }
+
+        // Required by MCP spec: client must send 'notifications/initialized' after receiving initialize response
+        await _jsonRpc.SendNotificationAsync("notifications/initialized", new JsonObject(), cancellationToken).ConfigureAwait(false);
+
         _initialized = true;
     }
 

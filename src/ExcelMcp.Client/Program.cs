@@ -93,6 +93,38 @@ try
             var pivotName = ResolveArgument(args, "--pivot");
             await AnalyzePivotAsync(client, pivotSheet, pivotName);
             break;
+        case "write-cell":
+            var wcSheet = ResolveArgument(args, "--sheet") ?? args.SkipWhile(a => a != "write-cell").Skip(1).FirstOrDefault();
+            var wcCell = ResolveArgument(args, "--cell") ?? args.SkipWhile(a => a != "write-cell").Skip(2).FirstOrDefault();
+            var wcValue = ResolveArgument(args, "--value") ?? args.SkipWhile(a => a != "write-cell").Skip(3).FirstOrDefault();
+            if (string.IsNullOrEmpty(wcSheet) || string.IsNullOrEmpty(wcCell))
+            {
+                Console.Error.WriteLine("Error: --sheet and --cell are required.");
+                return 1;
+            }
+            await WriteCellAsync(client, wcSheet, wcCell, wcValue);
+            break;
+        case "write-range":
+            var wrSheet = ResolveArgument(args, "--sheet") ?? args.SkipWhile(a => a != "write-range").Skip(1).FirstOrDefault();
+            var wrRange = ResolveArgument(args, "--range");
+            var wrData = ResolveArgument(args, "--data");
+            if (string.IsNullOrEmpty(wrSheet) || string.IsNullOrEmpty(wrRange) || string.IsNullOrEmpty(wrData))
+            {
+                Console.Error.WriteLine("Error: --sheet, --range, and --data (JSON array of {cell,value}) are required.");
+                return 1;
+            }
+            await WriteRangeAsync(client, wrSheet, wrRange, wrData);
+            break;
+        case "create-worksheet":
+            var newSheet = args.SkipWhile(a => a != "create-worksheet").Skip(1).FirstOrDefault()
+                        ?? ResolveArgument(args, "--name");
+            if (string.IsNullOrEmpty(newSheet))
+            {
+                Console.Error.WriteLine("Error: Worksheet name required.");
+                return 1;
+            }
+            await CreateWorksheetAsync(client, newSheet);
+            break;
         default:
             Console.Error.WriteLine($"Unknown command: {command}");
             ShowHelp();
@@ -116,7 +148,7 @@ static void ShowHelp()
     Console.WriteLine("  --workbook, -w <path>   Path to Excel workbook (or set EXCEL_MCP_WORKBOOK)");
     Console.WriteLine("  --server, -s <path>     Path to MCP server executable (or set EXCEL_MCP_SERVER)");
     Console.WriteLine();
-    Console.WriteLine("Commands:");
+    Console.WriteLine("Read commands:");
     Console.WriteLine("  list                    List available tools");
     Console.WriteLine("  resources               List available resources");
     Console.WriteLine("  search <query>          Search the workbook");
@@ -124,6 +156,17 @@ static void ShowHelp()
     Console.WriteLine("    --rows <n>            Number of rows to preview (default: 10)");
     Console.WriteLine("  analyze-pivot <sheet>   Analyze pivot tables in a sheet");
     Console.WriteLine("    --pivot <name>        Specific pivot table name (optional)");
+    Console.WriteLine();
+    Console.WriteLine("Write commands:");
+    Console.WriteLine("  write-cell              Update a single cell");
+    Console.WriteLine("    --sheet <name>        Worksheet name");
+    Console.WriteLine("    --cell <ref>          Cell reference e.g. A1");
+    Console.WriteLine("    --value <val>         Value to write");
+    Console.WriteLine("  write-range             Update multiple cells");
+    Console.WriteLine("    --sheet <name>        Worksheet name");
+    Console.WriteLine("    --range <ref>         Range reference e.g. A1:B3");
+    Console.WriteLine("    --data <json>         JSON array: [{\"cell\":\"A1\",\"value\":\"x\"},...]");
+    Console.WriteLine("  create-worksheet <name> Add a new worksheet");
 }
 
 static string? ResolveArgument(string[] args, string longName, string? shortName = null)
@@ -150,7 +193,8 @@ static string? FindServerExecutable()
         Path.Combine(baseDir, "ExcelMcp.Server.exe"),
         Path.Combine(baseDir, "ExcelMcp.Server"),
         Path.Combine(baseDir, "..", "ExcelMcp.Server", "ExcelMcp.Server.exe"), // Dev layout
-        Path.Combine(baseDir, "..", "ExcelMcp.Server", "bin", "Debug", "net9.0", "ExcelMcp.Server.exe") // Dev layout
+        Path.Combine(baseDir, "..", "ExcelMcp.Server", "bin", "Debug", "net10.0", "ExcelMcp.Server"), // Dev layout Linux
+        Path.Combine(baseDir, "..", "ExcelMcp.Server", "bin", "Debug", "net10.0", "ExcelMcp.Server.exe") // Dev layout Windows
     };
 
     foreach (var path in candidates)
@@ -241,4 +285,44 @@ static async Task AnalyzePivotAsync(McpProcessClient client, string sheet, strin
     {
         Console.WriteLine(content.Text);
     }
+}
+
+static async Task WriteCellAsync(McpProcessClient client, string sheet, string cell, string? value)
+{
+    var args = new JsonObject
+    {
+        ["worksheet"] = sheet,
+        ["cell"] = cell,
+        ["value"] = value ?? ""
+    };
+
+    var result = await client.CallToolAsync("excel-write-cell", args, CancellationToken.None);
+    if (result.IsError) Console.Error.WriteLine("Write failed.");
+    foreach (var content in result.Content) Console.WriteLine(content.Text);
+}
+
+static async Task WriteRangeAsync(McpProcessClient client, string sheet, string range, string dataJson)
+{
+    JsonNode? updates;
+    try { updates = JsonNode.Parse(dataJson); }
+    catch { Console.Error.WriteLine("Error: --data must be valid JSON."); return; }
+
+    var args = new JsonObject
+    {
+        ["worksheet"] = sheet,
+        ["range"] = range,
+        ["updates"] = updates
+    };
+
+    var result = await client.CallToolAsync("excel-write-range", args, CancellationToken.None);
+    if (result.IsError) Console.Error.WriteLine("Write range failed.");
+    foreach (var content in result.Content) Console.WriteLine(content.Text);
+}
+
+static async Task CreateWorksheetAsync(McpProcessClient client, string name)
+{
+    var args = new JsonObject { ["name"] = name };
+    var result = await client.CallToolAsync("excel-create-worksheet", args, CancellationToken.None);
+    if (result.IsError) Console.Error.WriteLine("Create worksheet failed.");
+    foreach (var content in result.Content) Console.WriteLine(content.Text);
 }
