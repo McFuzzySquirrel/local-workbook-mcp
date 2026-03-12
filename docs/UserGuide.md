@@ -206,11 +206,13 @@ The server communicates via stdin/stdout using JSON-RPC 2.0 (ModelContextProtoco
 pwsh -File scripts/package-server.ps1 -Runtime win-x64
 pwsh -File scripts/package-client.ps1 -Runtime win-x64  
 pwsh -File scripts/package-chatweb.ps1 -Runtime win-x64
+pwsh -File scripts/package-skagent.ps1 -Runtime win-x64
 
 # Package for Linux
 pwsh -File scripts/package-server.ps1 -Runtime linux-x64
 pwsh -File scripts/package-client.ps1 -Runtime linux-x64
 pwsh -File scripts/package-chatweb.ps1 -Runtime linux-x64
+pwsh -File scripts/package-skagent.ps1 -Runtime linux-x64
 
 # Package for multiple platforms at once
 pwsh -File scripts/package-chatweb.ps1 -Runtime @('win-x64','linux-x64','osx-arm64')
