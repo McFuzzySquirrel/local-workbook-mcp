@@ -1,70 +1,75 @@
 # Future Features & Roadmap
 
-**Last Updated:** November 1, 2025  
-**Project Status:** Feature Complete - CLI and Web Chat fully functional
+**Last Updated:** March 12, 2026  
+**Project Status:** MVP Complete — MCP SDK migration, write operations, and pivot analysis all shipped
 
 ---
 
 ## Completed ✅
 
-- ✅ MCP Server (stdio transport)
-- ✅ CLI Chat Agent (Semantic Kernel)  
+- ✅ MCP Server (stdio transport, ModelContextProtocol SDK 1.1.0)
+- ✅ CLI Chat Agent (Semantic Kernel 1.73.0)
 - ✅ Web Chat UI (Blazor Server)
 - ✅ Workbook-agnostic prompts
-- ✅ Debug logging
+- ✅ Debug logging (Serilog structured)
 - ✅ Linux/Raspberry Pi support
-- ✅ Sample workbooks
-- ✅ HTML table rendering fix (Nov 1)
+- ✅ Sample workbooks + pivot test workbook
+- ✅ HTML table rendering
 - ✅ User Story 1: Basic Workbook Querying
 - ✅ User Story 2: Multi-Turn Conversations
 - ✅ User Story 3: Cross-Sheet Insights
 - ✅ User Story 4: Data Filtering
-- ✅ User Story 5: Export Capabilities
+- ✅ User Story 5: Export Capabilities (CSV + Markdown)
+- ✅ **Write-Back Operations** — `excel-write-cell`, `excel-write-range`, `excel-create-worksheet` with timestamped auto-backup
+- ✅ **Pivot Table Analysis** — `excel-analyze-pivot` with field extraction and aggregated data
+- ✅ **Official MCP SDK 1.1.0** — full spec compliance; `[McpServerTool]` attribute-based registration
+- ✅ **External MCP Client Configs** — Claude Desktop, GitHub Copilot, Cursor out-of-box
+- ✅ **Ollama as default LLM** — auto-detection with LM Studio fallback
+- ✅ Real-time token streaming in Blazor UI
+- ✅ Session export to CSV/Markdown
 
 ---
 
 ## In Progress 🚧
 
-**Phase 8: Polish & Cross-Cutting Concerns**
-- Code cleanup
-- Security hardening
-- Final performance validation
-
-**See:** [WEB-CHAT-ROADMAP.md](../WEB-CHAT-ROADMAP.md)
+**Phase 5+: Polish & Extensibility**
+- Unit test expansion for write operations
+- Provider status indicator in Chat UI
+- Stream cancel button in UI
 
 ---
 
 ## Short Term (Next 2-4 Weeks)
 
-### Mobile-Responsive Web UI (P3)
+### Mobile-Responsive Web UI
 - Responsive Blazor components
 - Touch-optimized interface
-- Progressive Web App
 
 ---
 
 ## Medium Term (1-3 Months)
 
-### Write-Back Operations
-- Update cell values
-- Add worksheets
-- Annotate findings
-- Audit trail
+### Pivot Table Enhancements
+- Pivot table creation/modification via MCP tool
+- Drill-down from pivot cells to source data rows
+- Pivot cache and calculated field analysis
+- Slicer and filter integration
 
-### Advanced Analytics
-- Value distributions
-- Outlier detection
-- Chart generation
-- Pivot table support
+### Formula Support
+- Formula evaluation ("what-if" scenarios)
+- Natural language to Excel formula translation
 
 ---
 
 ## Long Term (3-6 Months)
 
 ### Alternative Transports
-- WebSocket (real-time)
-- HTTP/REST (stateless)
-- gRPC (performance)
+- WebSocket (real-time, bi-directional)
+- HTTP/REST (stateless API mode)
+
+### Advanced Analytics
+- Value distribution and outlier detection
+- Chart generation via OpenXML
 
 ---
 
@@ -73,7 +78,7 @@
 - Formula evaluation ("what-if" scenarios)
 - Natural language to Excel formulas
 - Integration with external data sources
-- AI-powered insights
+- AI-powered anomaly detection
 
 ---
 

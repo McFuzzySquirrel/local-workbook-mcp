@@ -33,6 +33,10 @@ if (config is null)
 
 // Try to detect actual running model
 string actualModel = await DetectRunningModel(config.BaseUrl);
+if (actualModel != "unknown")
+{
+    config = new AgentConfiguration { BaseUrl = config.BaseUrl, ModelId = actualModel, ApiKey = config.ApiKey };
+}
 
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>

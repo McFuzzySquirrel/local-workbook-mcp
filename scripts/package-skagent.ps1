@@ -76,7 +76,7 @@ Contents
 
 Quick Start (Windows PowerShell)
 --------------------------------
-1. Start your local LLM server (e.g., LM Studio on http://localhost:1234)
+1. Start your local LLM server (e.g., Ollama on http://localhost:11434)
 2. Run .\run-skagent.ps1
 3. Provide the Excel workbook path when prompted
 4. Chat with your workbook using natural language!
@@ -90,7 +90,7 @@ Quick Start (Linux / macOS bash)
 
 Environment Variables
 ---------------------
-LLM_BASE_URL     - LLM endpoint URL (default: http://localhost:1234)
+LLM_BASE_URL     - LLM endpoint URL (default: http://localhost:11434)
 LLM_MODEL_ID     - Model name (default: phi-4-mini-reasoning)
 LLM_API_KEY      - API key (default: not-used)
 EXCEL_MCP_WORKBOOK - Workbook path to skip prompts
@@ -150,7 +150,7 @@ if (-not (Test-Path $agentExe)) {
 }
 
 Write-Host "Starting Excel MCP Semantic Kernel Agent..." -ForegroundColor Cyan
-Write-Host "Make sure your LLM server is running (e.g., LM Studio on http://localhost:1234)" -ForegroundColor Yellow
+Write-Host "Make sure your LLM server is running (e.g., Ollama on http://localhost:11434)" -ForegroundColor Yellow
 Write-Host ""
 
 & $agentExe --workbook $resolvedWorkbook

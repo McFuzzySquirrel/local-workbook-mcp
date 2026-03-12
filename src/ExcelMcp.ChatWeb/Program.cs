@@ -270,7 +270,9 @@ static string? TryFindServerExecutable()
         Path.Combine(baseDirectory, fileName),
         Path.Combine(baseDirectory, "ExcelMcp.Server", fileName),
         Path.Combine(baseDirectory, "..", "ExcelMcp.Server", fileName),
-        Path.Combine(baseDirectory, "..", "..", "ExcelMcp.Server", fileName)
+        Path.Combine(baseDirectory, "..", "..", "ExcelMcp.Server", fileName),
+        // repo-root/src/ExcelMcp.Server/bin/Debug/net10.0/ sibling project (from ChatWeb bin output dir: up 4 = repo/src/)
+        Path.Combine(baseDirectory, "..", "..", "..", "..", "ExcelMcp.Server", "bin", "Debug", "net10.0", fileName)
     };
 
     foreach (var candidate in candidates.Select(Path.GetFullPath))

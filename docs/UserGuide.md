@@ -1,79 +1,96 @@
 # Excel Local MCP - User Guide
 
-**Last Updated:** November 1, 2025
+**Last Updated:** March 12, 2026
 
 This guide covers setup, workflows, and troubleshooting for the Excel Local MCP project.
 
-**Status:** 
-- ✅ **CLI Agent** - Stable, well-tested, recommended for terminal users
-- ✅ **Web Chat** - Feature complete, recommended for browser users
+**Status:**
+- ✅ **Web Chat** — Feature complete, recommended for browser users
+- ✅ **Terminal Agent** — Recommended for terminal/scripting workflows
+- ✅ **CLI Debug Tool** — For scripting, MCP inspection, and troubleshooting
+- ✅ **Write Operations** — Cells, ranges, worksheets with auto-backup
+- ✅ **Pivot Table Analysis** — Structure, fields, and aggregated data
 
 ## Prerequisites
 
-- .NET 9.0 SDK (for building from source) or self-contained executables from the distribution
-- A local LLM server for the SK agent (e.g., [LM Studio](https://lmstudio.ai/), Ollama)
-- Excel workbook files (`.xlsx` format)
+| Requirement | Version | Notes |
+|---|---|---|
+| [.NET SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | 10.0+ | Required to build and run |
+| Local LLM server | — | [Ollama](https://ollama.com/) (recommended) or [LM Studio](https://lmstudio.ai/) |
+| Excel workbook | `.xlsx` | Your own file or generate sample data (see below) |
+| `libgdiplus` (Linux only) | — | `sudo apt install libgdiplus` |
 
-## Getting Started with the Semantic Kernel CLI Agent (Recommended)
+## Getting Started
 
-The SK agent provides an AS/400-style terminal interface for conversational workbook analysis.
+### 1. Clone and Build
 
-### 1. Start Your Local LLM Server
-
-The SK agent requires an OpenAI-compatible API endpoint. Recommended options:
-
-**Option A: LM Studio (Easiest)**
-1. Download and install [LM Studio](https://lmstudio.ai/)
-2. Download a model (recommended: `phi-4`, `llama-3.1-8b-instruct`, or `gpt-4` compatible)
-3. Load the model and start the local server
-4. Verify it's running on `http://localhost:1234`
-
-**Option B: Ollama**
 ```bash
-ollama serve
-ollama run llama3.2
+git clone https://github.com/McFuzzySquirrel/local-workbook-mcp.git
+cd local-workbook-mcp
+dotnet build
 ```
+
+### 2. Generate Sample Workbooks (Optional)
+
+```bash
+# Creates ProjectTracking.xlsx, EmployeeDirectory.xlsx, BudgetTracker.xlsx
+pwsh scripts/create-sample-workbooks.ps1
+
+# Creates SalesWithPivot.xlsx (includes a pivot table)
+pwsh scripts/create-pivot-test-workbook.ps1
+```
+
+### 3. Start Your Local LLM Server
+
+The agent requires an OpenAI-compatible API endpoint.
+
+**Option A: Ollama (Recommended)**
+```bash
+ollama pull llama3.2
+ollama serve
+# Runs on http://localhost:11434 by default
+```
+
+**Option B: LM Studio**
+1. Download and install [LM Studio](https://lmstudio.ai/)
+2. Download a model (`phi-4`, `llama-3.2-3b-instruct`, etc.)
+3. Start the local server — runs on `http://localhost:1234` by default
 
 **Option C: OpenAI API**
-Set your API key in environment variables (see Configuration section below).
+Set `LLM_API_KEY` in your environment (see Configuration section).
 
-### 2. Configure the SK Agent (Optional)
+### 4. Launch the Web UI
 
-The agent uses sensible defaults, but you can customize via environment variables:
+**Linux/macOS:**
+```bash
+./run-chatweb.sh
+# Opens http://localhost:5000
+```
 
-### 3. Launch the Web UI
-
-#### From Source:
-
+**Windows:**
 ```powershell
 dotnet run --project src/ExcelMcp.ChatWeb
+# Opens http://localhost:5000
 ```
 
-#### From Distribution:
-
+**From distribution:**
 ```powershell
 # Windows
-cd dist/win-x64/ExcelMcp.ChatWeb
-./run-chatweb.ps1
+cd dist/win-x64/ExcelMcp.ChatWeb && ./run-chatweb.ps1
 
 # Linux/macOS
-cd dist/linux-x64/ExcelMcp.ChatWeb
-chmod +x run-chatweb.sh
-./run-chatweb.sh
+cd dist/linux-x64/ExcelMcp.ChatWeb && chmod +x run-chatweb.sh && ./run-chatweb.sh
 ```
 
-### 4. Use the Web Interface
+### 5. Use the Web Interface
 
 1. Open your browser to `http://localhost:5000`
 2. Click **"Choose Excel file..."** in the right sidebar
-3. Select your Excel workbook (`.xlsx` or `.xls`)
+3. Select your Excel workbook (`.xlsx`)
 4. Click **"Load Workbook"**
-5. Once loaded, you'll see:
-   - Workbook name and sheet count
-   - List of sheets in the workbook
-   - Suggested questions you can ask
+5. Once loaded you'll see workbook name, sheet count, and suggested questions
 
-### 5. Ask Questions
+### 6. Ask Questions
 
 Type natural language queries in the input box:
 
@@ -92,16 +109,26 @@ Type natural language queries in the input box:
 - "Find all mentions of Contoso"
 - "Where does 'revenue' appear?"
 
-**Advanced Filtering:**
+**Filtering:**
 - "Show sales greater than 5000"
 - "Find customers in NY"
 - "Show items with price between 10 and 20"
+
+**Write operations:**
+- "Update cell B2 in Projects to 'Project Renew'"
+- "Set the value of C5 in Budget to 75000"
+- "Create a new worksheet called Summary"
+
+**Pivot table analysis:**
+- "What pivot tables are in the SalesPivot sheet?"
+- "Analyze the SalesSummary pivot table"
+- "Show me regional sales totals from the pivot"
 
 **Cross-Sheet Analysis:**
 - "Compare Sales and Inventory for matching products"
 - "Find all mentions of Project X across all sheets"
 
-### 6. Advanced Features
+### 7. Advanced Features
 
 - **Summarize:** Click the "Summarize" button to get a concise report of your conversation and findings.
 - **Export Chat:** Click "Export Chat" to download the full conversation history as a Markdown file.
@@ -116,9 +143,13 @@ The system will:
 
 ## Using the CLI Client
 
-For scripting or quick queries without the web UI:
+For scripting, automation, or quick queries without the web UI:
 
-```powershell
+```bash
+# Set workbook path once (required)
+export EXCEL_MCP_WORKBOOK="/path/to/your/workbook.xlsx"
+export EXCEL_MCP_SERVER="./src/ExcelMcp.Server/bin/Debug/net10.0/ExcelMcp.Server"
+
 # List workbook structure
 dotnet run --project src/ExcelMcp.Client -- list
 
@@ -129,41 +160,42 @@ dotnet run --project src/ExcelMcp.Client -- search "product name"
 dotnet run --project src/ExcelMcp.Client -- preview Sales --rows 10
 dotnet run --project src/ExcelMcp.Client -- preview Inventory --table InventoryTable
 
-# Get resource content
-dotnet run --project src/ExcelMcp.Client -- resources
-dotnet run --project src/ExcelMcp.Client -- get excel://worksheet/Sales
+# Analyze pivot tables
+dotnet run --project src/ExcelMcp.Client -- analyze-pivot SalesPivot
+
+# Write operations (create timestamped backup before saving)
+dotnet run --project src/ExcelMcp.Client -- write-cell Sheet1 A1 "Updated Value"
+dotnet run --project src/ExcelMcp.Client -- write-range Sheet1 '[{"cellAddress":"A1","value":"Hello"},{"cellAddress":"B1","value":"World"}]'
+dotnet run --project src/ExcelMcp.Client -- create-worksheet "Summary"
 ```
-
-On first run, the client will prompt for:
-1. **Workbook path** - Full path to your Excel file
-2. **Server path** - Path to `ExcelMcp.Server.exe` (auto-detected if running from source)
-
-These values are cached in environment variables for subsequent runs.
 
 ## Running the MCP Server Standalone
 
-The server can run independently for integration with other MCP-compatible tools:
+The server can run independently for integration with any MCP-compatible client (Claude Desktop, GitHub Copilot, Cursor, VS Code Agent Mode, etc.):
 
-```powershell
-# Direct execution
-dotnet run --project src/ExcelMcp.Server -- --workbook "D:/Data/finance.xlsx"
+```bash
+# From source
+dotnet run --project src/ExcelMcp.Server -- --workbook "/path/to/finance.xlsx"
 
-# Or from distribution
-./ExcelMcp.Server.exe --workbook "D:/Data/finance.xlsx"
+# From distribution
+./ExcelMcp.Server --workbook "/path/to/finance.xlsx"
 ```
 
-The server communicates via stdin/stdout using JSON-RPC 2.0. It exposes:
+The server communicates via stdin/stdout using JSON-RPC 2.0 (ModelContextProtocol SDK 1.1.0).
 
-### MCP Tools
+### MCP Tools (7 total)
 
-1. **excel-list-structure** - Returns JSON metadata about all worksheets, tables, columns
-2. **excel-search** - Full-text search across all cells
-3. **excel-preview-table** - Returns CSV data from a worksheet or named table
+| Tool | Parameters | Purpose |
+|---|---|---|
+| `excel-list-structure` | `workbook_path` (opt) | Worksheets, tables, columns, row counts, pivot tables |
+| `excel-search` | `query`, `workbook_path`, `worksheet`, `table`, `limit` (1–100), `case_sensitive` | Full-text search across all cells |
+| `excel-preview-table` | `worksheet`, `workbook_path`, `table`, `rows` (1–100, default 10) | CSV preview of a worksheet or named table |
+| `excel-analyze-pivot` | `worksheet`, `workbook_path`, `pivot_table`, `include_filters`, `max_rows` (1–500) | Pivot table structure, fields, and aggregated data |
+| `excel-write-cell` | `worksheet`, `cell_address` (A1 notation), `value`, `workbook_path` | Write a single cell; creates backup before save |
+| `excel-write-range` | `worksheet`, `updates_json` (JSON array of `{cellAddress, value}`), `workbook_path` | Write multiple cells in one operation; creates backup |
+| `excel-create-worksheet` | `worksheet_name`, `workbook_path` | Add a new blank worksheet; creates backup |
 
-### MCP Resources
-
-- `excel://workbook/metadata` - Workbook metadata
-- `excel://worksheet/{name}` - Specific worksheet details
+> **Write operations**: Every mutation creates a timestamped `.xlsx` backup in the same directory before saving (e.g., `MyFile_2026-03-12T143025Z.xlsx`).
 
 ## Distribution and Packaging
 
@@ -174,11 +206,13 @@ The server communicates via stdin/stdout using JSON-RPC 2.0. It exposes:
 pwsh -File scripts/package-server.ps1 -Runtime win-x64
 pwsh -File scripts/package-client.ps1 -Runtime win-x64  
 pwsh -File scripts/package-chatweb.ps1 -Runtime win-x64
+pwsh -File scripts/package-skagent.ps1 -Runtime win-x64
 
 # Package for Linux
 pwsh -File scripts/package-server.ps1 -Runtime linux-x64
 pwsh -File scripts/package-client.ps1 -Runtime linux-x64
 pwsh -File scripts/package-chatweb.ps1 -Runtime linux-x64
+pwsh -File scripts/package-skagent.ps1 -Runtime linux-x64
 
 # Package for multiple platforms at once
 pwsh -File scripts/package-chatweb.ps1 -Runtime @('win-x64','linux-x64','osx-arm64')
@@ -202,27 +236,31 @@ Distribute the zip file or the entire `dist/{runtime-id}/{AppName}` folder. User
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information"
-    }
+  "SemanticKernel": {
+    "BaseUrl": "http://localhost:11434/v1",
+    "Model": "llama3.2",
+    "ApiKey": "not-needed-for-local",
+    "TimeoutSeconds": 480
   },
-  "LlmStudio": {
-    "BaseUrl": "http://localhost:1234/v1",
-    "Model": "phi-4-mini-reasoning"
-  },
-  "ExcelMcp": {
-    "ServerPath": "D:/path/to/ExcelMcp.Server.exe"
+  "Conversation": {
+    "MaxContextTurns": 5,
+    "MaxResponseLength": 10000,
+    "SuggestedQueriesCount": 3
   }
 }
 ```
 
+The `BaseUrl` auto-detection order: Ollama (`localhost:11434`) → LM Studio (`localhost:1234`) → configured default.
+
 ### Environment Variables
 
-- `EXCEL_MCP_WORKBOOK` - Default workbook path
-- `EXCEL_MCP_SERVER` - Path to MCP server executable
-- `LLM_STUDIO_BASE_URL` - Override LLM endpoint
-- `LLM_STUDIO_MODEL` - Override LLM model name
+| Variable | Purpose | Example |
+|---|---|---|
+| `EXCEL_MCP_WORKBOOK` | Default workbook path for all tools | `/data/ProjectTracking.xlsx` |
+| `EXCEL_MCP_SERVER` | Path to MCP server executable (set by `run-chatweb.sh`) | `./src/ExcelMcp.Server/bin/Debug/net10.0/ExcelMcp.Server` |
+| `LLM_BASE_URL` | Override LLM endpoint (include `/v1`) | `http://localhost:11434/v1` |
+| `LLM_MODEL_ID` | Override LLM model name | `llama3.2` |
+| `LLM_API_KEY` | API key (not needed for local models) | `lm-studio` |
 
 ## How It Works
 
@@ -416,11 +454,10 @@ var process = Process.Start(start);
 **Problem:** Queries timeout or return errors.
 
 **Solutions:**
-- Verify LM Studio (or your LLM server) is running
-- Check the endpoint URL matches (`http://localhost:1234/v1`)
-- Ensure a model is loaded in LM Studio
-- Test the endpoint: `curl http://localhost:1234/v1/models`
-- Check `appsettings.json` has correct `BaseUrl` and `Model`
+- Verify your LLM server is running (Ollama: `curl http://localhost:11434/api/tags`; LM Studio: `curl http://localhost:1234/v1/models`)
+- Ensure a model is loaded (Ollama: `ollama list`; LM Studio: check server tab)
+- Check `appsettings.json` has correct `SemanticKernel.BaseUrl` and `SemanticKernel.Model`
+- Set env vars to override: `export LLM_BASE_URL="http://localhost:11434/v1"`
 
 ### MCP Server Crashes
 
@@ -471,15 +508,13 @@ $env:EXCEL_MCP_SERVER = "C:\Path\To\ExcelMcp.Server.exe"
 
 ### Custom LLM Configuration
 
-For non-LM Studio endpoints:
-
 ```json
 {
-  "LlmStudio": {
+  "SemanticKernel": {
     "BaseUrl": "http://your-server:port/v1",
     "Model": "your-model-name",
-    "Temperature": 0.7,
-    "MaxTokens": 2048
+    "ApiKey": "your-key-if-needed",
+    "TimeoutSeconds": 480
   }
 }
 ```
@@ -549,7 +584,7 @@ Add to your `.vscode/mcp.json`:
   "servers": {
     "excel-workbook-mcp": {
       "type": "stdio",
-      "command": "${workspaceFolder}/src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server.exe",
+      "command": "${workspaceFolder}/src/ExcelMcp.Server/bin/Debug/net10.0/ExcelMcp.Server",
       "args": [
         "--workbook",
         "${input:excel-workbook-path}"
@@ -626,8 +661,8 @@ print(f"Workbook has {len(structure['worksheets'])} sheets")
 **Status:** Feature complete.
 
 ### Prerequisites
-- .NET 9.0 SDK
-- Local LLM server (LM Studio, Ollama) on port 1234
+- .NET 10.0 SDK
+- Local LLM server (Ollama or LM Studio)
 - Modern web browser
 - For Linux: `libgdiplus` package (`sudo apt install libgdiplus`)
 
@@ -665,18 +700,17 @@ dotnet run --project src/ExcelMcp.ChatWeb
 ### Troubleshooting
 - **Port conflict:** Use `ASPNETCORE_URLS="http://localhost:5001"`
 - **Linux:** Install `libgdiplus` if Excel loading fails
-- **More help:** See [WEB-CHAT-ROADMAP.md](../WEB-CHAT-ROADMAP.md)
+- **LLM issues:** See [SkAgentTroubleshooting.md](SkAgentTroubleshooting.md)
 
 ---
 
 ## Known Limitations
 
-- **Read-only:** Current version only reads workbooks, no write operations
 - **File size:** Very large workbooks (>100MB) may be slow to load
-- **Formulas:** Returns calculated values, not formula definitions
+- **Formulas:** Returns calculated values, not formula text/definitions
 - **Charts:** Chart definitions are not exposed through MCP tools
-- **Pivot tables:** Pivot table data is not yet supported
 - **Protected workbooks:** Password-protected workbooks are not supported
+- **Pivot refresh:** Pivot table data reflects the last saved state; the server cannot trigger a pivot refresh
 
 See [docs/FutureFeatures.md](FutureFeatures.md) for planned enhancements.
 

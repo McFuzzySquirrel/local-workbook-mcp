@@ -1,6 +1,6 @@
 # Excel Local MCP
 
-[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/9.0)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![MCP SDK](https://img.shields.io/badge/MCP_SDK-1.1.0-0078D4?style=flat-square)](https://www.nuget.org/packages/ModelContextProtocol)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
@@ -46,7 +46,7 @@ The server exposes 7 standard MCP tools that map directly to Excel operations. A
 - **Blazor web chat** — multi-turn conversation, suggested queries, session export to CSV/Markdown
 - **Terminal agent** — AS/400-inspired REPL powered by Spectre.Console and Semantic Kernel
 - **CLI debug tool** — inspect raw MCP tool calls for scripting and troubleshooting
-- **Cross-platform** — Windows, Linux, macOS via .NET 9
+- **Cross-platform** — Windows, Linux, macOS via .NET 10
 
 ## Getting Started
 
@@ -54,8 +54,8 @@ The server exposes 7 standard MCP tools that map directly to Excel operations. A
 
 | Requirement | Version | Notes |
 |---|---|---|
-| [.NET SDK](https://dotnet.microsoft.com/download/dotnet/9.0) | 9.0+ | Required to build and run |
-| Local LLM server | — | [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) |
+| [.NET SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | 10.0+ | Required to build and run |
+| Local LLM server | — | [Ollama](https://ollama.com/) (recommended) or [LM Studio](https://lmstudio.ai/) |
 | Excel workbook | `.xlsx` / `.xls` | Your own file, or generate sample data (see below) |
 
 > [!TIP]
@@ -81,13 +81,14 @@ pwsh scripts/create-pivot-test-workbook.ps1
 
 ### 3. Start your local LLM
 
-**LM Studio** — load any model and start the local server (default: `http://localhost:1234`).
-
-**Ollama:**
+**Ollama (recommended):**
 ```bash
-ollama serve
 ollama pull llama3.2
+ollama serve
+# Runs on http://localhost:11434 — auto-detected by the web UI and run-chatweb.sh
 ```
+
+> **LM Studio alternative:** load any model and start the local server on `http://localhost:1234`. The web UI will auto-detect it, but `run-chatweb.sh` only checks the Ollama endpoint — you'll see a warning you can safely ignore.
 
 ### 4. Launch the web UI
 
@@ -100,8 +101,6 @@ dotnet run --project src/ExcelMcp.ChatWeb
 ```
 
 Open `http://localhost:5000`, select your workbook in the sidebar, and start chatting.
-
-![CLI Screenshot](docs/cli-screenshot.jpeg)
 
 ### 5. Or launch the terminal agent
 
@@ -118,6 +117,8 @@ Example queries once the agent is running:
 > What does the SalesPivot pivot table contain?
 > Update cell B2 in the Projects sheet to "Completed"
 ```
+
+![CLI Screenshot](docs/cli-screenshot.jpeg)
 
 ---
 
@@ -169,7 +170,7 @@ Merge into `~/.cursor/mcp.json` — see [mcp-config/cursor_mcp_config.json](mcp-
 Create `.vscode/mcp.json` in your workspace pointing at the server executable.
 
 > [!NOTE]
-> The server binary is built to `src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server` (or `.exe` on Windows). Use the `scripts/package-server.ps1` script to produce a self-contained distributable.
+> The server binary is built to `src/ExcelMcp.Server/bin/Debug/net10.0/ExcelMcp.Server` (or `.exe` on Windows). Use the `scripts/package-server.ps1` script to produce a self-contained distributable.
 
 ---
 
@@ -178,7 +179,7 @@ Create `.vscode/mcp.json` in your workspace pointing at the server executable.
 `ExcelMcp.Client` is a lightweight CLI for directly invoking MCP tools. Useful for scripting, smoke testing, and debugging tool payloads.
 
 ```bash
-export EXCEL_MCP_SERVER="src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server"
+export EXCEL_MCP_SERVER="src/ExcelMcp.Server/bin/Debug/net10.0/ExcelMcp.Server"
 export EXCEL_MCP_WORKBOOK="test-data/ProjectTracking.xlsx"
 
 # Available commands
@@ -204,12 +205,14 @@ Key settings in `src/ExcelMcp.ChatWeb/appsettings.json`:
 
 ```json
 {
-  "LlmStudio": {
-    "BaseUrl": "http://localhost:11434",
-    "Model": "llama3.2"
+  "SemanticKernel": {
+    "BaseUrl": "http://localhost:11434/v1",
+    "Model": "llama3.2",
+    "ApiKey": "not-needed-for-local",
+    "TimeoutSeconds": 480
   },
   "ExcelMcp": {
-    "ServerPath": "src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server"
+    "ServerPath": "src/ExcelMcp.Server/bin/Debug/net10.0/ExcelMcp.Server"
   },
   "Conversation": {
     "MaxContextTurns": 5,
@@ -218,6 +221,8 @@ Key settings in `src/ExcelMcp.ChatWeb/appsettings.json`:
 }
 ```
 
+The `BaseUrl` auto-detects: Ollama (`localhost:11434`) is tried first, then LM Studio (`localhost:1234`).
+
 Override for development in `appsettings.Development.json`.
 
 ### Terminal Agent
@@ -225,10 +230,12 @@ Override for development in `appsettings.Development.json`.
 Configure via environment variables:
 
 ```bash
-export LLM_BASE_URL="http://localhost:1234"      # LM Studio
-# or
-export LLM_BASE_URL="http://localhost:11434/v1"  # Ollama
+# Ollama (default — auto-detected)
+export LLM_BASE_URL="http://localhost:11434/v1"
 export LLM_MODEL_ID="llama3.2"
+# or LM Studio
+export LLM_BASE_URL="http://localhost:1234/v1"
+export LLM_MODEL_ID="local-model"
 export EXCEL_MCP_WORKBOOK="/path/to/workbook.xlsx"
 ```
 

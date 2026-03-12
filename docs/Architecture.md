@@ -1,21 +1,22 @@
 # Project Architecture Blueprint
 
-**Generated:** November 24, 2025  
+**Generated:** March 12, 2026  
 **Project:** Local Excel Conversational Agent (local-workbook-mcp)  
-**Framework:** .NET 9.0 (C# 13)  
+**Framework:** .NET 10.0 (C# 13)  
 **Architecture:** Layered / Clean Architecture with MCP Integration
 
 ---
 
 ## 1. Architecture Detection and Analysis
 
-This project implements a **Local-First, Agentic Architecture** built on the **Model Context Protocol (MCP)**. It decouples the data source (Excel) from the user interfaces (CLI, Web) using a standardized protocol, enabling modularity and extensibility.
+This project implements a **Local-First, Agentic Architecture** built on the **Model Context Protocol (MCP)**. It decouples the data source (Excel) from the user interfaces (CLI, Web) using the official `ModelContextProtocol` SDK 1.1.0, enabling modularity and extensibility.
 
 ### Technology Stack
-- **Core Framework**: .NET 9.0 (C# 13)
+- **Core Framework**: .NET 10.0 (C# 13)
 - **Web Framework**: ASP.NET Core Blazor Server (Interactive Server)
-- **AI Orchestration**: Microsoft Semantic Kernel
-- **Excel Processing**: ClosedXML (OpenXML SDK wrapper)
+- **AI Orchestration**: Microsoft Semantic Kernel 1.73.0
+- **MCP SDK**: ModelContextProtocol 1.1.0 (official SDK)
+- **Excel Processing**: ClosedXML 0.105.0 (OpenXML SDK wrapper)
 - **CLI Interface**: Spectre.Console
 - **Communication**: JSON-RPC over Standard Input/Output (Stdio) via MCP
 - **Logging**: Serilog (Structured Logging)
@@ -106,11 +107,13 @@ sequenceDiagram
 ## 4. Core Architectural Components
 
 ### 1. ExcelMcp.Server
--   **Purpose**: The "Backend for Frontend" of the Excel domain. It exposes workbook structure and data as MCP resources and tools.
+-   **Purpose**: The "Backend for Frontend" of the Excel domain. Exposes workbook read, write, and analysis operations as MCP tools via the official `ModelContextProtocol` SDK.
 -   **Internal Structure**:
-    -   `Program.cs`: Entry point, parses args, starts server.
-    -   `McpServer`: Handles the MCP protocol loop.
-    -   `ExcelWorkbookService`: Wraps ClosedXML to provide high-level data access.
+    -   `Program.cs`: Entry point, registers tools, starts MCP server.
+    -   `ExcelTools.cs`: All 7 MCP tools using `[McpServerTool]` attributes.
+    -   `ExcelWorkbookService`: Wraps ClosedXML for high-level data access and mutations.
+-   **MCP Tools**: `excel-list-structure`, `excel-search`, `excel-preview-table`, `excel-analyze-pivot`, `excel-write-cell`, `excel-write-range`, `excel-create-worksheet`
+-   **Write Safety**: All mutation tools create timestamped `.xlsx` backups before saving.
 -   **Interaction**: Listens on Stdio. No direct dependencies on UI or AI.
 
 ### 2. ExcelMcp.ChatWeb
@@ -118,12 +121,12 @@ sequenceDiagram
 -   **Internal Structure**:
     -   **Components**: Blazor UI (`Chat.razor`, `WorkbookSelector.razor`).
     -   **Services**: `ExcelAgentService` (Orchestrator), `ConversationManager` (State), `ResponseFormatter`.
-    -   **Plugins**: `WorkbookStructurePlugin`, `DataRetrievalPlugin` (SK integration).
+    -   **Plugins**: `WorkbookStructurePlugin`, `WorkbookSearchPlugin`, `DataRetrievalPlugin`, `WorkbookWritePlugin` (SK integration).
 -   **Interaction**: Hosts the `McpClientHost` which spawns the Server process.
 
 ### 3. ExcelMcp.Contracts
 -   **Purpose**: Shared Data Transfer Objects (DTOs) to ensure type safety across the MCP boundary.
--   **Internal Structure**: Records like `ExcelSearchArguments`, `ExcelSearchResult`, `WorkbookMetadata`.
+-   **Internal Structure**: Records such as `ExcelSearchArguments`, `ExcelSearchResult`, `WorkbookMetadata`, `WriteContracts`, `PivotTableContracts`.
 -   **Interaction**: Referenced by Server, Client, and Web.
 
 ---
@@ -132,9 +135,9 @@ sequenceDiagram
 
 The solution uses a **Strict Layered Architecture** enforced by project references:
 
-1.  **Domain Layer (Implicit)**: `ExcelMcp.Contracts` defines the domain language (Workbooks, Sheets, Tables).
-2.  **Infrastructure Layer**: `ExcelMcp.Server` implements the data access logic.
-3.  **Application Layer**: `ExcelMcp.ChatWeb` and `ExcelMcp.SkAgent` contain the application logic and AI orchestration.
+1.  **Domain Layer (Implicit)**: `ExcelMcp.Contracts` defines the domain language (Workbooks, Sheets, Tables, Write operations).
+2.  **Infrastructure Layer**: `ExcelMcp.Server` implements data access and mutation logic.
+3.  **Application Layer**: `ExcelMcp.ChatWeb` and `ExcelMcp.SkAgent` contain application logic and AI orchestration.
 4.  **Presentation Layer**: Blazor Components (Web) and Spectre.Console (CLI).
 
 **Dependency Flow**:
@@ -145,13 +148,14 @@ The solution uses a **Strict Layered Architecture** enforced by project referenc
 ## 6. Data Architecture
 
 ### Domain Model
--   **WorkbookContext**: Represents a loaded file. Contains metadata (sheets, tables).
+-   **WorkbookContext**: Represents a loaded file. Contains metadata (sheets, tables, pivot tables).
 -   **WorkbookSession**: Represents a user's session. Holds `ConversationHistory` and `WorkbookContext`.
 -   **ConversationTurn**: A single exchange (User Query + Agent Response).
 
 ### Data Access
--   **Read-Only (Current)**: The system primarily reads from Excel.
--   **On-Demand**: Data is not ingested into a database. It is queried in real-time from the `.xlsx` file via ClosedXML.
+-   **Read + Write**: The system reads and writes Excel workbooks via ClosedXML.
+-   **Write Safety**: Every mutation creates a timestamped `.xlsx` backup before saving.
+-   **On-Demand**: Data is not ingested into a database. Queries execute in real-time against the `.xlsx` file.
 -   **Caching**: `WorkbookMetadata` is cached in `WorkbookContext` to avoid repeated structure queries.
 
 ---

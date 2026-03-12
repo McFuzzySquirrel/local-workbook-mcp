@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using ExcelMcp.ChatWeb.Options;
 using ExcelMcp.Client.Mcp;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace ExcelMcp.ChatWeb.Services;
@@ -8,13 +9,15 @@ namespace ExcelMcp.ChatWeb.Services;
 public sealed class McpClientHost : IHostedService, IAsyncDisposable, IMcpClient
 {
     private readonly ExcelMcpOptions _options;
+    private readonly string _contentRoot;
     private McpProcessClient? _client;
     private string? _currentWorkbookPath;
     private readonly SemaphoreSlim _initLock = new(1, 1);
 
-    public McpClientHost(IOptions<ExcelMcpOptions> options)
+    public McpClientHost(IOptions<ExcelMcpOptions> options, IWebHostEnvironment env)
     {
         _options = options.Value;
+        _contentRoot = env.ContentRootPath;
     }
 
     public bool IsInitialized => _client != null;
@@ -62,11 +65,16 @@ public sealed class McpClientHost : IHostedService, IAsyncDisposable, IMcpClient
             if (string.IsNullOrWhiteSpace(resolvedServerPath))
             {
                 resolvedServerPath = Environment.GetEnvironmentVariable("EXCEL_MCP_SERVER") 
-                    ?? "src/ExcelMcp.Server/bin/Debug/net9.0/ExcelMcp.Server.exe";
+                    ?? Path.Combine("src", "ExcelMcp.Server", "bin", "Debug", "net10.0",
+                        OperatingSystem.IsWindows() ? "ExcelMcp.Server.exe" : "ExcelMcp.Server");
             }
 
-            var fullWorkbookPath = Path.GetFullPath(workbookPath);
-            var fullServerPath = Path.GetFullPath(resolvedServerPath);
+            var fullWorkbookPath = Path.IsPathRooted(workbookPath)
+                ? workbookPath
+                : Path.GetFullPath(workbookPath, _contentRoot);
+            var fullServerPath = Path.IsPathRooted(resolvedServerPath)
+                ? resolvedServerPath
+                : Path.GetFullPath(resolvedServerPath, _contentRoot);
 
             if (!File.Exists(fullWorkbookPath))
             {

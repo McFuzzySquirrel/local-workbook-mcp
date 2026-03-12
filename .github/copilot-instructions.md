@@ -36,6 +36,12 @@ This is a **Local-First, Agentic Architecture** built on the **Model Context Pro
 - `docs/Architecture.md`: Detailed architectural blueprint and diagrams.
 
 
+# Copilot repository instructions (Engineering Journey System)
+
+Follow the Engineering Journey System (EJS) contracts in this repo.
+
+Full agent profile: `.github/agents/ejs-journey.agent.md`
+
 ---
 
 ## EJS Silent Recording Contract (Always-On)
@@ -104,8 +110,40 @@ When the user signals session end:
 ### Key Principle
 Capture context **incrementally throughout the session**, not reconstructed at the end. This produces better documentation by preserving details when they're fresh.
 
-### EJS Database (Optional)
-- Run `python scripts/adr-db.py sync` at session start to refresh the decision index
-- Use `python scripts/adr-db.py search <query>` to reference past decisions efficiently
+### EJS Database (Required — DB-First Lookup)
+
+Always query the EJS database **before** reading raw markdown files. The database is the primary lookup method; markdown files are a fallback for additional detail.
+
+1. **At session start**, run `python scripts/adr-db.py sync` to refresh the SQLite index.
+2. **When referencing past decisions or context**, use database commands first:
+   - `python scripts/adr-db.py search <query>` — full-text search across ADRs and journeys
+   - `python scripts/adr-db.py summary` — compact overview of all ADRs
+   - `python scripts/adr-db.py summary-journeys` — compact overview of all journeys
+   - `python scripts/adr-db.py get <adr_id>` — full details for a specific ADR
+   - `python scripts/adr-db.py get-journey <session_id>` — full details for a specific journey
+3. **Only read the raw markdown files** (`ejs-docs/adr/*.md`, `ejs-docs/journey/**/*.md`) when the database results are insufficient and you need more detail as a fallback.
+
+> **Why DB-first?** Database queries consume far less context than reading full markdown files. The DB returns only relevant snippets and metadata, preserving context budget for actual work.
+
+### Context-Threshold Checkpointing
+
+Do not rely solely on session-end signals to save EJS documentation. Perform **checkpoint saves** proactively during the session to prevent documentation loss if context runs out.
+
+#### When to Checkpoint
+Perform an EJS checkpoint save when **any** of the following are true:
+- You have accumulated **3 or more unsaved interactions** in your working memory (an interaction is one human prompt and the corresponding agent response)
+- You have made a **significant decision** that is not yet written to the journey file
+- You are about to start a **large, context-intensive operation** (e.g., reading many files, running complex builds, delegating to sub-agents)
+- **5 or more exchanges** have occurred since the last journey file save
+- The user has not explicitly ended the session, but substantial work has been completed
+
+#### How to Checkpoint
+1. Write all pending interactions, decisions, experiments, and learnings to the Session Journey file
+2. Keep the checkpoint lightweight — append to existing sections, do not rewrite the entire file
+3. Do **not** populate machine extracts or evaluate the ADR rubric during checkpoints (those are finalization-only)
+4. Continue working normally after the checkpoint
+
+#### Principle
+Treat each checkpoint as insurance against context loss. If the session were to end unexpectedly after a checkpoint, the journey file should contain a useful (if incomplete) record of work done so far.
 
 Do not claim commands/tests ran unless you observed the output.

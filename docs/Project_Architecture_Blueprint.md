@@ -1,8 +1,8 @@
 # Project Architecture Blueprint
 
-**Generated:** November 27, 2025  
+**Generated:** March 12, 2026  
 **Project:** Local Excel Conversational Agent (local-workbook-mcp)  
-**Framework:** .NET 9.0 (C# 13)  
+**Framework:** .NET 10.0 (C# 13)  
 **Architecture:** Hexagonal / Ports and Adapters with MCP Integration
 
 ---
@@ -12,12 +12,13 @@
 ### Technology Stack
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Runtime** | .NET 9.0 (C# 13) | Core framework, modern language features |
+| **Runtime** | .NET 10.0 (C# 13) | Core framework, modern language features |
 | **Web Framework** | ASP.NET Core Blazor Server | Interactive server-side rendering |
-| **AI Orchestration** | Microsoft Semantic Kernel | LLM plugin system, chat completion |
-| **Excel Processing** | ClosedXML | OpenXML SDK wrapper for .xlsx files |
+| **AI Orchestration** | Microsoft Semantic Kernel 1.73.0 | LLM plugin system, chat completion |
+| **MCP SDK** | ModelContextProtocol 1.1.0 | Official MCP server implementation |
+| **Excel Processing** | ClosedXML 0.105.0 | OpenXML SDK wrapper for .xlsx files |
 | **CLI Interface** | Spectre.Console | Rich terminal UI |
-| **Communication** | JSON-RPC 2.0 over Stdio | MCP protocol implementation |
+| **Communication** | JSON-RPC 2.0 over Stdio | MCP protocol transport |
 | **Logging** | Serilog | Structured logging with correlation |
 
 ### Architectural Pattern
@@ -203,9 +204,10 @@ ExcelMcp.ChatWeb/
 │   │   ├── ConversationManager.cs  # State management
 │   │   └── ResponseFormatter.cs    # Output formatting
 │   ├── Plugins/
-│   │   ├── DataRetrievalPlugin.cs      # preview_table, aggregations
-│   │   ├── WorkbookSearchPlugin.cs     # search_workbook
-│   │   └── WorkbookStructurePlugin.cs  # list_structure
+│   │   ├── DataRetrievalPlugin.cs      # preview_table
+│   │   ├── WorkbookSearchPlugin.cs     # search
+│   │   ├── WorkbookStructurePlugin.cs  # list_structure
+│   │   └── WorkbookWritePlugin.cs      # write_cell, write_range, create_worksheet
 │   └── McpClientHost.cs    # MCP process manager
 ├── Models/
 │   ├── WorkbookSession.cs  # Per-circuit session state
@@ -242,6 +244,12 @@ public sealed record ExcelSearchResult(IReadOnlyList<ExcelRowResult> Rows, bool 
 public sealed record PivotTableArguments(string Worksheet, string? PivotTable, bool IncludeFilters, int MaxRows);
 public sealed record PivotTableResult(IReadOnlyList<PivotTableInfo> PivotTables);
 
+// Write contracts
+public sealed record WriteCellRequest(string WorkbookPath, string Worksheet, string CellAddress, string Value);
+public sealed record WriteRangeRequest(string WorkbookPath, string Worksheet, IReadOnlyList<CellUpdate> Updates);
+public sealed record CreateWorksheetRequest(string WorkbookPath, string WorksheetName);
+public sealed record WriteResult(bool Success, string Message, string? BackupPath);
+
 // Workbook metadata
 public sealed record WorkbookMetadata(string WorkbookPath, IReadOnlyList<WorksheetMetadata> Worksheets, DateTimeOffset LoadedAt);
 ```
@@ -262,7 +270,7 @@ public sealed record WorkbookMetadata(string WorkbookPath, IReadOnlyList<Workshe
 
 **Purpose**: CLI debugging tool for direct MCP server interaction.
 
-**Commands**: `list`, `resources`, `search`, `preview`, `analyze-pivot`
+**Commands**: `list`, `search`, `preview`, `analyze-pivot`, `write-cell`, `write-range`, `create-worksheet`
 
 ---
 
@@ -349,7 +357,8 @@ classDiagram
 
 ### Data Access Pattern
 
-- **Read-Only**: System currently only reads from Excel files
+- **Read + Write**: The system reads and writes Excel workbooks via ClosedXML
+- **Write Safety**: Every mutation (`write-cell`, `write-range`, `create-worksheet`) creates a timestamped `.xlsx` backup before saving
 - **On-Demand**: No data ingestion; queries execute directly against `.xlsx` files
 - **Caching**: `WorkbookMetadata` cached in `WorkbookContext` to avoid repeated structure scans
 
@@ -562,8 +571,8 @@ publish/
 ```
 
 ### Runtime Requirements
-- .NET 9.0 Runtime (self-contained option available)
-- Local LLM (LM Studio, Ollama) on port 1234
+- .NET 10.0 Runtime (self-contained option available)
+- Local LLM (Ollama on port 11434 or LM Studio on port 1234)
 
 ---
 
@@ -586,10 +595,20 @@ publish/
    }
    ```
 
-3. **Register Tool** (`ExcelMcp.Server`):
+3. **Register Tool** (`ExcelMcp.Server` via `[McpServerTool]` attribute):
    ```csharp
-   // McpServer.cs constructor
-   _tools.Add("excel-new-feature", HandleNewFeatureAsync);
+   // ExcelTools.cs
+   [McpServerTool(Name = "excel-new-feature")]
+   [Description("...")]
+   public static async Task<string> NewFeatureAsync(
+       [Description("param description")] string param1,
+       ExcelWorkbookService service,
+       CancellationToken cancellationToken)
+   {
+       var args = new NewFeatureArguments(param1);
+       var result = await service.NewFeatureAsync(args, cancellationToken);
+       return JsonSerializer.Serialize(result);
+   }
    ```
 
 4. **Create Plugin** (`ExcelMcp.ChatWeb`):
@@ -686,13 +705,13 @@ flowchart LR
 
 - [ ] Contract added to `ExcelMcp.Contracts`
 - [ ] Service method in `ExcelWorkbookService`
-- [ ] Tool registered in `McpServer._tools`
-- [ ] Plugin method with `[KernelFunction]` attribute
-- [ ] CLI command in `ExcelMcp.Client`
+- [ ] Tool registered via `[McpServerTool]` in `ExcelTools.cs`
+- [ ] Plugin method with `[KernelFunction]` attribute in appropriate ChatWeb plugin
+- [ ] CLI command in `ExcelMcp.Client/Program.cs`
 - [ ] Documentation updated
 - [ ] Test coverage added
 
 ---
 
-*Last Updated: November 27, 2025*  
+*Last Updated: March 12, 2026*  
 *Recommendation: Review and update this blueprint when adding new components or making significant architectural changes.*

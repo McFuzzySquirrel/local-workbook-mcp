@@ -1,37 +1,43 @@
-# Excel MCP Semantic Kernel Agent - Quick Demo Guide
+# Excel MCP Semantic Kernel Agent - Quick Start Guide
 
-This guide shows you how to get started with the new AS/400-style terminal agent.
+**Last Updated:** March 12, 2026
+
+This guide shows you how to get started with the AS/400-style terminal agent powered by Semantic Kernel.
 
 ## What You'll Need
 
-1. **A local LLM server** running on `http://localhost:1234`
-   - [LM Studio](https://lmstudio.ai/) is recommended (free, easy to use)
-   - Load a model like `phi-4-mini-reasoning` or any other chat model
-   
+1. **A local LLM server** — [Ollama](https://ollama.com/) (recommended) or [LM Studio](https://lmstudio.ai/)
+   - Ollama default: `http://localhost:11434`
+   - LM Studio default: `http://localhost:1234`
+   - Load a model with good function-calling support (see recommendations below)
+
 2. **An Excel workbook** to analyze (`.xlsx` format)
 
-3. **.NET 9.0 SDK** installed
+3. **.NET 10.0 SDK** installed
 
 ## Quick Start
 
 ### Step 1: Start Your LLM Server
 
-```pwsh
-# If using LM Studio:
-# 1. Open LM Studio
-# 2. Download a model (e.g., phi-4-mini-reasoning)
-# 3. Start the local server (default port 1234)
-# 4. Make sure the server is running and ready
+**Option A: Ollama (Recommended)**
+```bash
+ollama pull llama3.2
+ollama serve
 ```
+
+**Option B: LM Studio**
+1. Open LM Studio and download a model (e.g., `phi-4`, `llama-3.2-3b-instruct`)
+2. Start the local server (default port 1234)
+3. Verify it's running on `http://localhost:1234`
 
 ### Step 2: Run the Agent
 
-```pwsh
+```bash
 # From the repository root
 dotnet run --project src/ExcelMcp.SkAgent -- --workbook "path/to/your/workbook.xlsx"
 
 # Or use environment variable
-$env:EXCEL_MCP_WORKBOOK = "D:/Data/sample.xlsx"
+export EXCEL_MCP_WORKBOOK="/home/user/data/sample.xlsx"
 dotnet run --project src/ExcelMcp.SkAgent
 ```
 
@@ -44,6 +50,9 @@ Once the agent starts, you'll see a green ASCII art banner and a prompt (`>`). T
 > Show me the first 10 rows of the Sales table
 > Search for laptop
 > How many tables are in this workbook?
+> Update cell A1 in Sheet1 to "Updated Value"
+> Create a new worksheet called Summary
+> Analyze the pivot table in SalesPivot
 > exit
 ```
 
@@ -55,13 +64,33 @@ Once the agent starts, you'll see a green ASCII art banner and a prompt (`>`). T
 
 ## Configuration (Optional)
 
-If you're using a different LLM endpoint, set these environment variables:
+The agent auto-detects Ollama at `http://localhost:11434`. If you're using a different endpoint, set these environment variables:
 
-```pwsh
-$env:LLM_BASE_URL = "http://localhost:11434"  # e.g., for Ollama
-$env:LLM_MODEL_ID = "llama2"
-$env:LLM_API_KEY = "your-api-key-if-needed"
+```bash
+# For a custom Ollama model
+export LLM_BASE_URL="http://localhost:11434/v1"
+export LLM_MODEL_ID="llama3.2"
+export LLM_API_KEY=""   # not needed for local
+
+# For LM Studio
+export LLM_BASE_URL="http://localhost:1234/v1"
+export LLM_MODEL_ID="local-model"
+export LLM_API_KEY="lm-studio"
+
+# PowerShell equivalents
+$env:LLM_BASE_URL = "http://localhost:1234/v1"
+$env:LLM_MODEL_ID = "local-model"
+$env:LLM_API_KEY = "lm-studio"
 ```
+
+## Recommended Models
+
+For best function-calling results (in order of recommendation):
+
+1. `llama3.2` or `llama3.1` via Ollama
+2. `phi-4` via LM Studio or Ollama
+3. `mistral` (Ollama)
+4. `gpt-4` or `gpt-4-turbo` (OpenAI API — requires `LLM_API_KEY`)
 
 ## The AS/400 Experience
 
@@ -70,22 +99,26 @@ The agent is designed to feel like classic terminal computing:
 - **Green ASCII art** banner on startup
 - **Simple prompt** (`>`) for input
 - **Command-based** interface (help, clear, exit)
-- **Fast and lightweight** - no web browser needed
+- **Fast and lightweight** — no web browser needed
 - **Text-based tables** for data display
 - **Status indicators** with spinners during processing
 
 ## Behind the Scenes
 
-When you ask a question:
+When you ask a question, the agent uses these SK plugin functions:
 
-1. **Semantic Kernel** receives your query
-2. The **LLM decides** which Excel tools to call
-3. **Tools are invoked** automatically:
-   - `list_structure` - Get worksheet/table metadata
-   - `search` - Find text across the workbook
-   - `preview_table` - Show rows from tables
-   - `get_workbook_summary` - Get workbook overview
-4. **Results formatted** and displayed in the terminal
+| Function | Purpose |
+|---|---|
+| `list_structure` | Describe worksheets, tables, columns, pivot tables |
+| `search` | Find text across the workbook |
+| `preview_table` | Show rows from a worksheet or named table |
+| `get_workbook_summary` | High-level workbook overview |
+| `write_cell` | Update a single cell value |
+| `write_range` | Update multiple cells in one operation |
+| `create_worksheet` | Add a new blank worksheet |
+| `analyze_pivot` | Inspect pivot table structure and data |
+
+Each SK function wraps the corresponding MCP tool call. Write operations automatically create a timestamped `.xlsx` backup before saving.
 
 ## Example Session
 
@@ -98,6 +131,25 @@ When you ask a question:
 Semantic Kernel Agent for Local Excel Workbooks
 Type 'help' for commands, 'exit' to quit
 
+Using workbook: /home/user/data/ProjectTracking.xlsx
+
+> What sheets are in this workbook?
+  The workbook contains 3 worksheets: Projects, Tasks, Resources
+
+> Show me the first 5 rows of Projects
+  | ID | Name           | Status  | Owner   |
+  |----|----------------|---------|---------|
+  | 1  | Alpha Launch   | Active  | Alice   |
+  | 2  | Beta Migration | On Hold | Bob     |
+  | 3  | Gamma Rollout  | Active  | Carol   |
+  | 4  | Delta Upgrade  | Done    | Dave    |
+  | 5  | Epsilon Prep   | Active  | Eve     |
+
+> Update cell B2 in Projects to "Project Renew"
+  ✓ Cell B2 updated. Backup created: ProjectTracking_2026-03-12T143025Z.xlsx
+
+> exit
+```
 ═══════════════════════════════════════════════════════════
 Workbook: sample-sales-data.xlsx
 Model: phi-4-mini-reasoning
