@@ -1,12 +1,30 @@
 # Troubleshooting the SK Agent
 
+**Last Updated:** March 12, 2026
+
 ## Common Issues
 
-### 1. NullReferenceException from OpenAI.Chat.ChatCompletion.get_Refusal()
+### 1. Connection Refused or Timeout
+
+**Symptom:** Agent hangs or shows connection errors on startup.
+
+**Solutions:**
+- Make sure your LLM server is running *before* starting the agent
+- Ollama default: `http://localhost:11434` — verify with `curl http://localhost:11434/api/tags`
+- LM Studio default: `http://localhost:1234` — verify with `curl http://localhost:1234/v1/models`
+- Check your firewall isn't blocking the port
+- Set explicit URL via `LLM_BASE_URL` (include `/v1` suffix):
+
+```bash
+export LLM_BASE_URL="http://localhost:11434/v1"   # Ollama
+export LLM_BASE_URL="http://localhost:1234/v1"    # LM Studio
+```
+
+### 2. NullReferenceException from OpenAI SDK
 
 **Symptom:**
 ```
-Unhandled exception. System.NullReferenceException: Object reference not set to an instance of an object.
+System.NullReferenceException: Object reference not set to an instance of an object.
    at OpenAI.Chat.ChatCompletion.get_Refusal()
 ```
 
@@ -14,90 +32,144 @@ Unhandled exception. System.NullReferenceException: Object reference not set to 
 
 **Solutions:**
 
-1. **Update LM Studio** to the latest version (recommended)
-   - Download from https://lmstudio.ai/
-   - Newer versions have better OpenAI API compatibility
-
-2. **Check your LM Studio server settings:**
-   - Make sure "Enable CORS" is checked
-   - Verify the server is running on `http://localhost:1234`
-   - Try loading a different model (phi-4, llama-3, etc.)
-
-3. **Use environment variables for explicit configuration:**
-   ```pwsh
-   $env:LLM_BASE_URL = "http://localhost:1234/v1"
-   $env:LLM_MODEL_ID = "local-model"  # Use whatever shows in LM Studio
-   $env:LLM_API_KEY = "lm-studio"
-   ```
-
-4. **Try Ollama instead of LM Studio:**
-   ```pwsh
-   # Install Ollama from https://ollama.ai/
+1. **Update LM Studio** to the latest version — newer versions have better OpenAI API compatibility
+2. **Switch to Ollama** (generally more stable for function calling):
+   ```bash
+   ollama pull llama3.2
    ollama serve
-   ollama run llama3.2
-   
-   # Configure the agent:
-   $env:LLM_BASE_URL = "http://localhost:11434/v1"
-   $env:LLM_MODEL_ID = "llama3.2"
+   export LLM_BASE_URL="http://localhost:11434/v1"
+   export LLM_MODEL_ID="llama3.2"
    ```
-
-### 2. Connection Refused or Timeout
-
-**Symptom:** Agent hangs or shows connection errors
-
-**Solutions:**
-- Make sure your LLM server is running before starting the agent
-- Check the URL - LM Studio uses `http://localhost:1234`, Ollama uses `http://localhost:11434`
-- Verify your firewall isn't blocking the connection
-- Try `curl http://localhost:1234/v1/models` to test the endpoint
+3. **Use explicit env vars for LM Studio:**
+   ```bash
+   export LLM_BASE_URL="http://localhost:1234/v1"
+   export LLM_MODEL_ID="local-model"
+   export LLM_API_KEY="lm-studio"
+   ```
 
 ### 3. Model Not Found
 
-**Symptom:** Error about model not being available
+**Symptom:** Error about model not being available.
 
 **Solutions:**
-- In LM Studio, make sure you've loaded a model (it should show in the server tab)
-- Set `LLM_MODEL_ID` to match the exact model name shown in your LLM server
-- For LM Studio, you can often use `local-model` as a generic identifier
+- For Ollama: verify the model is pulled — `ollama list`
+- For LM Studio: make sure a model is loaded in the server tab (not just downloaded)
+- Set `LLM_MODEL_ID` to the exact model name shown in your server
+- For LM Studio, `local-model` often works as a generic identifier
 
 ### 4. Tools Not Being Called
 
-**Symptom:** Agent responds but doesn't use the Excel functions
+**Symptom:** Agent responds conversationally but never calls Excel functions (no data returned).
 
 **Solutions:**
-- Some models are better at function calling than others
-- Try these models (in order of recommendation):
-  1. `gpt-4` or `gpt-4-turbo` (if using OpenAI API)
-  2. `phi-4` (good local option)
-  3. `llama-3.1` or `llama-3.2` (Ollama)
-  4. `mistral` (decent function calling support)
-- Check your LLM server logs for errors
-- Increase temperature if the model is too conservative: set in `ExcelAgent.cs`
+
+Models vary significantly in function-calling quality. Try these (best first):
+
+| Model | Provider | Notes |
+|---|---|---|
+| `llama3.2` | Ollama | Best local option for tool use |
+| `llama3.1` | Ollama | Solid function calling |
+| `phi-4` | LM Studio / Ollama | Good reasoning + tool use |
+| `mistral` | Ollama | Decent function calling |
+| `gpt-4` / `gpt-4-turbo` | OpenAI API | Best overall, requires key |
+
+Additional steps:
+- Check your LLM server logs for errors during tool invocation
+- Make sure the workbook path is valid and accessible (`EXCEL_MCP_WORKBOOK` or `--workbook` arg)
 
 ### 5. Slow Response Times
 
 **Solutions:**
-- Use a smaller/faster model
-- Check your GPU/CPU usage - make sure the LLM is using hardware acceleration
-- Reduce `MaxTokens` in `ExcelAgent.cs` (currently 2000)
-- Close other applications using GPU/CPU
+- Use a smaller/faster model (e.g., `llama3.2:3b` instead of `llama3.1:70b`)
+- Verify the LLM is using hardware acceleration (GPU) — check server logs
+- Reduce `MaxTokens` in `src/ExcelMcp.SkAgent/ExcelAgent.cs` (currently 2000)
+- Close other GPU-intensive applications
+
+### 6. Write Operation Not Creating Backup
+
+**Symptom:** `write_cell`, `write_range`, or `create_worksheet` completes but no backup file is created.
+
+**Solutions:**
+- Verify the workbook directory is writable: `ls -la $(dirname $EXCEL_MCP_WORKBOOK)`
+- Backups are written to the same directory as the workbook, named `<workbook>_<timestamp>Z.xlsx`
+- Check the MCP server logs for backup-related errors
+- If running from a read-only filesystem (e.g., a network share), move the workbook to a local writable path
+
+### 7. Workbook Path Not Found
+
+**Symptom:** `"Workbook file not found"` or `FileNotFoundException` on first tool call.
+
+**Solutions:**
+- Use an absolute path: `export EXCEL_MCP_WORKBOOK="/home/user/data/file.xlsx"`
+- Verify the file exists: `ls -la "$EXCEL_MCP_WORKBOOK"`
+- Generate a sample workbook for testing:
+  ```bash
+  pwsh scripts/create-sample-workbooks.ps1
+  export EXCEL_MCP_WORKBOOK="$(pwd)/test-data/ProjectTracking.xlsx"
+  ```
+
+---
 
 ## Testing Your LLM Server
 
-Before running the agent, test your LLM server:
+Before running the agent, verify your LLM server is healthy:
 
-```pwsh
-# Test if the server is responding
+```bash
+# Ollama
+curl http://localhost:11434/api/tags
+curl http://localhost:11434/v1/models
+
+# LM Studio
 curl http://localhost:1234/v1/models
 
-# Test a chat completion
-curl http://localhost:1234/v1/chat/completions `
-  -H "Content-Type: application/json" `
+# Test a chat completion (either server)
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
   -d '{
-    "model": "local-model",
-    "messages": [{"role": "user", "content": "Hello!"}]
+    "model": "llama3.2",
+    "messages": [{"role": "user", "content": "Say hello"}]
   }'
 ```
+
+---
+
+## Recommended Setup
+
+**For best results:**
+
+1. **Ollama** with one of these models:
+   ```bash
+   ollama pull llama3.2          # 3B — fast, good tool use
+   ollama pull llama3.1          # 8B — better reasoning
+   ollama pull phi4              # 14B — excellent if you have the VRAM
+   ```
+
+2. **Or LM Studio 0.3.0+** with:
+   - `meta-llama/Llama-3.2-3B-Instruct`
+   - `microsoft/phi-4`
+   - `mistralai/Mistral-7B-Instruct-v0.3`
+
+3. **Environment variables (Linux/macOS):**
+   ```bash
+   export LLM_BASE_URL="http://localhost:11434/v1"
+   export LLM_MODEL_ID="llama3.2"
+   ```
+
+---
+
+## Still Having Issues?
+
+1. Try the **Web UI** (`ExcelMcp.ChatWeb`) — it's been more extensively tested and has better error surfacing
+2. Use the **CLI debug tool** to verify raw MCP calls work before involving the LLM:
+   ```bash
+   dotnet run --project src/ExcelMcp.Client -- list
+   dotnet run --project src/ExcelMcp.Client -- preview "SheetName"
+   ```
+3. File an issue on GitHub with:
+   - Your Ollama/LM Studio version
+   - The model you're using
+   - Full error message and stack trace
+   - Output of `curl http://localhost:11434/api/tags` (or LM Studio equivalent)
 
 If these work, your server is configured correctly.
 
