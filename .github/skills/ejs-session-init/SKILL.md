@@ -19,6 +19,11 @@ work on a new task, feature, or bug fix.
    python scripts/adr-db.py sync
    ```
    This ensures past ADRs and session journeys are queryable for context.
+   The database is the **primary** lookup method — always query it before
+   reading raw markdown files. Use `adr-db.py search <query>` or
+   `adr-db.py summary` to find relevant past decisions. Only fall back to
+   reading the markdown files directly when you need more detail than the
+   database provides.
 
 2. **Determine the session ID**
    - Format: `ejs-session-YYYY-MM-DD-<seq>` (2-digit daily sequence)
