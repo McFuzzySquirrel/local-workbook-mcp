@@ -85,10 +85,10 @@ pwsh scripts/create-pivot-test-workbook.ps1
 ```bash
 ollama pull llama3.2
 ollama serve
-# Runs on http://localhost:11434 — auto-detected by the web UI
+# Runs on http://localhost:11434 — auto-detected by the web UI and run-chatweb.sh
 ```
 
-**LM Studio** — load any model and start the local server (default: `http://localhost:1234`).
+> **LM Studio alternative:** load any model and start the local server on `http://localhost:1234`. The web UI will auto-detect it, but `run-chatweb.sh` only checks the Ollama endpoint — you'll see a warning you can safely ignore.
 
 ### 4. Launch the web UI
 
@@ -101,8 +101,6 @@ dotnet run --project src/ExcelMcp.ChatWeb
 ```
 
 Open `http://localhost:5000`, select your workbook in the sidebar, and start chatting.
-
-![CLI Screenshot](docs/cli-screenshot.jpeg)
 
 ### 5. Or launch the terminal agent
 
@@ -119,6 +117,8 @@ Example queries once the agent is running:
 > What does the SalesPivot pivot table contain?
 > Update cell B2 in the Projects sheet to "Completed"
 ```
+
+![CLI Screenshot](docs/cli-screenshot.jpeg)
 
 ---
 
